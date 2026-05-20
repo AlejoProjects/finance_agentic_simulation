@@ -1,0 +1,58 @@
+{
+    "simulation": {
+        "markets": ["Market_1"],
+        "agents": ["AlgorithmicGroup", "LLMGroup"],
+        "sessions": [
+            {
+                "sessionName": "Session_0",
+                "iterationSteps": 100,
+                "withOrderPlacement": true,
+                "withOrderExecution": false,
+                "withPrint": true
+            },
+            {
+                "sessionName": "Session_1",
+                "iterationSteps": 100,
+                "withOrderPlacement": true,
+                "withOrderExecution": true,
+                "withPrint": true
+            }
+        ]
+    },
+    "Market_1": {
+        "class": "Market",
+        "tickSize": 0.01,
+        "marketPrice": 10.50,
+        "fundamentalPrice": 10.50
+    },
+    "AlgorithmicGroup": {
+        "class": "FCNAgent",
+        "numAgents": 95,
+        "markets": ["Market_1"],
+        "assetVolume": 50,
+        "cashAmount": 10000.0,
+        "fundamentalWeight": {"expon": [1.0]},
+        "chartWeight": {"expon": [1.0]},
+        "noiseWeight": {"expon": [1.0]},
+        "meanReversionTime": {"uniform": [50, 100]},
+        "noiseScale": 0.001,
+        "timeWindowSize": [100, 200],
+        "orderMargin": [0.0, 0.1]
+    },
+    "LLMGroup": {
+        "class": "FCLAgent",
+        "numAgents": 5,
+        "markets": ["Market_1"],
+        "assetVolume": 50,
+        "cashAmount": 10000.0,
+        "fundamentalWeight": {"expon": [1.0]},
+        "chartWeight": {"expon": [1.0]},
+        "noiseWeight": {"expon": [1.0]},
+        "meanReversionTime": {"uniform": [50, 100]},
+        "noiseScale": 0.001,
+        "timeWindowSize": [100, 200],
+        "orderMargin": [0.0, 0.1],
+        "referencePrice": 10.50
+
+    }
+}
