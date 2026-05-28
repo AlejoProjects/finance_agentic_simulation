@@ -1,18 +1,18 @@
 {
     "simulation": {
         "markets": ["Market_1"],
-        "agents": ["FCNAgents"],
-        "sessions": [
+        "agents": ["FCNAgents", "FCLAgents"],
+        "sessions":  [
             {
                 "sessionName": "Session_0",
-                "iterationSteps": 0,
+                "iterationSteps": 100,
                 "withOrderPlacement": true,
                 "withOrderExecution": false,
                 "withPrint": true
             },
             {
                 "sessionName": "Session_1",
-                "iterationSteps": 500,
+                "iterationSteps": 1000,
                 "withOrderPlacement": true,
                 "withOrderExecution": true,
                 "withPrint": true
@@ -22,20 +22,34 @@
     "Market_1": {
         "class": "Market",
         "tickSize": 0.01,
-        "marketPrice": 20000.0
+        "marketPrice": 150.0
     },
     "FCNAgents": {
         "class": "FCNAgent",
-        "numAgents": 500,
+        "numAgents": 395,
         "markets": ["Market_1"],
         "assetVolume": 500,
         "cashAmount": 10000.0,
-        "fundamentalWeight": {"expon": [1.0]},
-        "chartWeight": {"expon": [1.0]},
-        "noiseWeight": {"expon": [1.0]},
-        "meanReversionTime": {"uniform": [50, 100]},
-        "noiseScale": 0.001,
-        "timeWindowSize": [100, 200],
-        "orderMargin": [0.0, 0.1]
+        "fundamentalWeight": {"expon": [0.6]},
+        "chartWeight": {"expon": [1.8]},
+        "noiseWeight": {"expon": [1.2]},
+        "meanReversionTime": {"uniform": [100, 500]},
+        "noiseScale": 0.004,
+        "timeWindowSize": [5, 60],
+        "orderMargin": [0.0, 0.01]
+    },
+    "FCLAgents": {
+        "class": "FCLAgent",
+        "numAgents": 5,
+        "markets": ["Market_1"],
+        "assetVolume": 500,
+        "cashAmount": 10000.0,
+        "fundamentalWeight": {"expon": [0.6]},
+        "chartWeight": {"expon": [1.8]},
+        "noiseWeight": {"expon": [1.2]},
+        "meanReversionTime": {"uniform": [100, 500]},
+        "noiseScale": 0.004,
+        "timeWindowSize": [5, 60],
+        "orderMargin": [0.0, 0.01]
     }
 }

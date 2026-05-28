@@ -1,12 +1,9 @@
 from pams.runners.sequential import SequentialRunner
-from pams.logs.market_step_loggers import MarketStepSaver
-from . import fcla as fc
 from . import personalities as pr
-import matplotlib.pyplot as plt
+from . import fcla as fc
 from openai import OpenAI
-
-import ollama
 import pandas as pd
+import ollama
 
 def run_sim(json_path,name,u_provider="ollama",u_model="qwen3:4b",hybrid=False):
     if hybrid == True:
@@ -47,13 +44,16 @@ def statistical_info(df):
     print(f"▶ Volatilidad (Desv. E): {df_real['market_price'].std():.4f}")
     print("="*40)
 def test_llm(used_model: str, service: str, api_key=""):
-    prompt = """Eres un inversor en un mercado continuo de doble subasta. Tu precio de compra de referencia fue 800.El precio actual en el mercado es 1000.Teniendo en cuenta tu sesgo de aversión a la pérdida, ¿deseas COMPRAR, VENDER o MANTENER?Responde estrictamente con una de estas palabras: BUY, SELL, HOLD.""".strip()
-    if service == 'ollama':
-        print(f"[Ollama] Procesando tu consulta con el modelo '{used_model}'...")
+    prompt = """
+    Eres un inversor en un mercado continuo de doble subasta. 
+    Tu precio de compra de referencia fue 800.
+    El precio actual en el mercado es 1000.
+    Teniendo en cuenta tu sesgo de aversión a la pérdida, ¿deseas COMPRAR, VENDER o MANTENER?
+    Responde estrictamente con una de estas palabras: BUY, SELL, HOLD.
+    """.strip()
+    
     if service == 'ollama':
         print(f"[Ollama] Verificando/Descargando el modelo '{used_model}'...")
-        
-        # Activamos stream=True para ver el progreso real en la consola y saber qué ocurre
         last_status = ""
         for chunk in ollama.pull(used_model, stream=True):
             status = chunk.get('status', '')
@@ -64,42 +64,50 @@ def test_llm(used_model: str, service: str, api_key=""):
         print("[Ollama] Procesando tu consulta...")
         response = ollama.chat(
             model=used_model, 
-            messages=[{
-                'role': 'user',
-                'content': prompt,
-            }],
-            options={
-                'num_ctx': 512
-            }
+            messages=[{'role': 'user', 'content': prompt}],
+            options={'num_ctx': 512}
         )
-        
-        # Sintaxis corregida para objetos ChatResponse: response.message.content
         answer = response.message.content
         print(f"[Ollama RESPUESTA]: {answer}")
         return answer
         
     elif service == 'nvidia':
-       
+        print(f"[NVIDIA] Conectando a la API con el modelo '{used_model}'...")
+        
         client = OpenAI(
-             base_url = "https://integrate.api.nvidia.com/v1",
-             api_key = api_key
-            )
-
+            base_url = "https://integrate.api.nvidia.com/v1",
+            api_key = "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"
+        )       
+        
         completion = client.chat.completions.create(
-        model=used_model,
-        messages=[{"role":"user","content":prompt}],
-        temperature=1,
-        top_p=0.95,
-        max_tokens=8192,
-        stream=True
+            model=used_model,                   # <-- CORREGIDO: Usa el modelo que le pasas
+            messages=[{"role": "user", "content": prompt}], # <-- CORREGIDO: Ya no está vacío
+            temperature=0.1, 
+            top_p=0.95,
+            max_tokens=50, 
+            stream=True
         )
-
+        
+        # Vamos a guardar los pedazos de texto que van llegando para poder retornarlos
+        texto_recibido = []
+        print("[NVIDIA RESPUESTA]: ", end="", flush=True)
+        
         for chunk in completion:
             if not getattr(chunk, "choices", None):
                 continue
             if chunk.choices[0].delta.content is not None:
-                print(chunk.choices[0].delta.content, end="")
+                chunk_text = chunk.choices[0].delta.content
+                print(chunk_text, end="", flush=True) # Muestra en tiempo real
+                texto_recibido.append(chunk_text)     # Guarda para el return
+        
+        print() # Al terminar el stream, hace un salto de línea
+        
+        # CORREGIDO: Creamos la variable answer para que no falle el return
+        answer = "".join(texto_recibido)
         return answer
+    
+
+
 def agents_order_separation(runner,logger):
     #Crear un mapa dinámico de ID de Agente -> Tipo de Agente
     agent_type_mapping = {}

@@ -1,15 +1,12 @@
 from typing import List, Union, Dict, Any, Optional
-from pams.agents import FCNAgent
+from pams.logs.market_step_loggers import MarketStepSaver
 from pams.order import Order, Cancel
+from pams.agents import FCNAgent
+from pams.logs import OrderLog
 from pams.market import Market
 from openai import OpenAI
-import random
 import ollama
-#  CÓDIGO CORREGIDO
-import pandas as pd
-from pams.runners.sequential import SequentialRunner
-from pams.logs.market_step_loggers import MarketStepSaver
-from pams.logs import OrderLog
+
 
 # 1. Definimos un Logger propio que sí guarde las órdenes individuales
 class CustomOrderLogger(MarketStepSaver):
