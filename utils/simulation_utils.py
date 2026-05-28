@@ -76,7 +76,7 @@ def test_llm(used_model: str, service: str, api_key=""):
         
         client = OpenAI(
             base_url = "https://integrate.api.nvidia.com/v1",
-            api_key = "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"
+            api_key = ""
         )       
         
         completion = client.chat.completions.create(
