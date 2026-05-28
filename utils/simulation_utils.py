@@ -79,28 +79,26 @@ def test_llm(used_model: str, service: str, api_key=""):
         return answer
         
     elif service == 'nvidia':
-        if not api_key or api_key == "":
-            raise ValueError("Error: Debes proporcionar un 'api_key' válido para usar el servicio de NVIDIA.")
-        
-        print(f"[NVIDIA] Conectando a NVIDIA NIM para evaluar modelo {used_model}...")
-        
+       
         client = OpenAI(
-            base_url="https://integrate.api.nvidia.com/v1",
-            api_key=api_key
+             base_url = "https://integrate.api.nvidia.com/v1",
+             api_key = api_key
+            )
+
+        completion = client.chat.completions.create(
+        model=used_model,
+        messages=[{"role":"user","content":prompt}],
+        temperature=1,
+        top_p=0.95,
+        max_tokens=8192,
+        stream=True
         )
-        
-        response = client.chat.completions.create(
-            model=used_model,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }],
-            temperature=0.0,  
-            max_tokens=10     
-        )
-        
-        answer = f"[NVIDIA RESPUESTA]: {response.choices[0].message.content.strip()}"
-        print(answer)
+
+        for chunk in completion:
+            if not getattr(chunk, "choices", None):
+                continue
+            if chunk.choices[0].delta.content is not None:
+                print(chunk.choices[0].delta.content, end="")
         return answer
 def agents_order_separation(runner,logger):
     #Crear un mapa dinámico de ID de Agente -> Tipo de Agente
