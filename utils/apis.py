@@ -1,8 +1,10 @@
 
+#Only for colab 
+#import requests
 from openai import OpenAI
 from groq import Groq
 import ollama
-import requests
+
 import json
 import threading
 import subprocess
@@ -47,7 +49,9 @@ def ollama_test_api_request(used_model,prompt,default_ps = {"temperature":0.1,"m
     }
     
     try:
-        response = requests.post(url, json=payload)
+        response = None
+        #response = requests.post(url, json=payload)
+        
         response.raise_for_status()
         raw_text = response.json().get("response", "")
         
@@ -60,6 +64,9 @@ def ollama_test_api_request(used_model,prompt,default_ps = {"temperature":0.1,"m
         
     except Exception as e:
         print(f"Error en la inferencia del agente: {e}")
+        print("la variable de entorno {enviroment} debe ser colab (porfavor descomenta:)")
+        print("linea 1: import requests")
+        print("linea 53 #response=...")
         return {"justificacion": "Error de conexión/parseo", "accion": "MANTENER", "cantidad": 0}
 
 

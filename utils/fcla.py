@@ -4,10 +4,9 @@ from pams.order import Order, Cancel
 from pams.agents import FCNAgent
 from pams.logs import OrderLog
 from pams.market import Market
-from openai import OpenAI
 from . import local_models as lm
 from . import apis as pi
-import ollama
+
 
 
 # 1. Definimos un Logger propio que sí guarde las órdenes individuales
