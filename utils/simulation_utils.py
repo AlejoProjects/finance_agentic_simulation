@@ -6,8 +6,6 @@ from openai import OpenAI
 from groq import Groq
 import pandas as pd
 import os
-import  sys
-import ollama
 import json
 
 def classic_parameters(c_params,file_name):
