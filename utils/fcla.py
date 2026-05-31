@@ -5,6 +5,8 @@ from pams.agents import FCNAgent
 from pams.logs import OrderLog
 from pams.market import Market
 from openai import OpenAI
+from . import local_models as lm
+from . import apis as pi
 import ollama
 
 
@@ -92,50 +94,55 @@ class FCLAgent(FCNAgent):
 
     def _call_llm_api(self, prompt: str) -> str:
         """
-        Conector abstracto compatible con Ollama y NVIDIA API (OpenAI spec)
+        Conector abstracto compatible con arquitecturas modulares (Ollama, NVIDIA, Groq, Local).
+        La lógica de red, parsing de respuestas y manejo de excepciones está abstraída en 'apis' y 'local_models'.
         """
-        try:
-            provider = FCLAgent._api_provider
-            model = FCLAgent._api_model
+        provider = FCLAgent._api_provider
+        model = FCLAgent._api_model
+        api_key = FCLAgent._api_key
+        base_url = FCLAgent._api_base_url
+        
+        # 1. Enrutar según proveedor
+        if provider == "ollama":
+            return pi.ollama_sim_api_request(
+                prompt=prompt, 
+                model=model, 
+                agent_id=self.agent_id, 
+                personality_name=self.personality_name
+            )
             
-            if provider == "ollama":
-                response = ollama.chat(
-                    model=model, 
-                    messages=[{'role': 'user', 'content': prompt}],
-                
-                )
-                
-                # Extracción robusta (compatible con versiones nuevas y antiguas de la librería)
-                try:
-                    raw_answer = response.message.content
-                except AttributeError:
-                    raw_answer = response['message']['content']
-                    
-                answer = raw_answer.strip().upper()
-                
-            elif provider == "nvidia":
-                base_url = FCLAgent._api_base_url or "https://integrate.api.nvidia.com/v1"
-                client = OpenAI(base_url=base_url, api_key=FCLAgent._api_key)
-                
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=[{"role": "user", "content": prompt}]
-                   )
-                answer = response.choices[0].message.content.strip().upper()
-            else:
-                raise ValueError(f"Proveedor de API desconocido: {provider}")
+        elif provider == "local":
+            return lm.local_model_api_request(
+                prompt=prompt, 
+                model=model, 
+                agent_id=self.agent_id, 
+                personality_name=self.personality_name,
+                api_key=api_key # Opcional, por si usas HuggingFace Tokens en local
+            )
             
-            print(f"  -> Agente {self.agent_id} ({self.personality_name}) - API ({provider}): {answer}")
+        elif provider == "nvidia":
+            url = base_url or "https://integrate.api.nvidia.com/v1"
+            return pi.nvidia_sim_api_request(
+                url=url,
+                api_key=api_key,
+                prompt=prompt,
+                model=model,
+                agent_id=self.agent_id,
+                personality_name=self.personality_name
+            )
             
-            # Limpiamos la respuesta por si el modelo agregó puntuación (ej: "BUY." en vez de "BUY")
-            if "BUY" in answer: return "BUY"
-            elif "SELL" in answer: return "SELL"
-            else: return "HOLD"   
+        elif provider == "groq":
+            return pi.groq_sim_api_request(
+                api_key=api_key,
+                groq_model=model,
+                prompt=prompt,
+                agent_id=self.agent_id,
+                personality_name=self.personality_name
+            )
             
-        except Exception as e:
-            print(f"  -> [ERROR API] Falla en la consulta para Agente {self.agent_id}: {e}")
+        else:
+            print(f"  -> [ERROR ARQUITECTURA] Proveedor API desconocido: '{provider}'. Agente {self.agent_id} fuerza HOLD.")
             return "HOLD"
-
     def submit_orders(self, markets: List[Market]) -> List[Union[Order, Cancel]]:
         import textwrap # Importación segura por si no está a nivel global
         

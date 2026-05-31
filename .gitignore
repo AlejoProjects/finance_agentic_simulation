@@ -1,4 +1,9 @@
-results/
+.csv
+
 __pycache__/
 /utils/__pycache__/
 .venv/
+models/*
+results/classic/*
+results/llms/*
+

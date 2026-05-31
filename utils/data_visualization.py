@@ -22,19 +22,28 @@ def market_behaviour(results_path):
     plt.legend()
     plt.grid(True)
     plt.show()
-def hybrid_market_behaviour(llm_results_path):
+
+def hybrid_market_behaviour(llm_results_path, ref_price):
     df = pd.read_csv(llm_results_path)
     plt.figure(figsize=(14, 7))
-    # 4. Graficar la evolución del precio de mercado y el precio fundamental a lo largo del tiempo
+    
+    # 4. Graficar la evolución del precio de mercado y el precio fundamental
     plt.plot(df['market_time'], df['market_price'],
-         label='Precio de Mercado (Híbrido: Algoritmos + LLM)',
-         color='#1f77b4', linewidth=1.5)
-    plt.plot(df['market_time'], df['fundamental_price'],
-         label='Precio Fundamental (P_F)',
-         color='#d62728', linestyle='--', linewidth=1.5)
-    plt.axhline(y=10.50, color='#2ca02c', linestyle=':', linewidth=2,
-            label='Punto de Referencia LLM (10.50)')
+             label='Precio de Mercado (Híbrido: Algoritmos + LLM)',
+             color='#1f77b4', linewidth=1.5)
+             
+    # Verificación de seguridad para el Precio Fundamental
+    if 'fundamental_price' in df.columns:
+        plt.plot(df['market_time'], df['fundamental_price'],
+                 label='Precio Fundamental ($P_F$)',
+                 color='#d62728', linestyle='--', linewidth=1.5)
+                 
+    # CORRECCIÓN: Uso dinámico del ref_price en lugar del 10.50 harcodeado
+    plt.axhline(y=ref_price, color='#2ca02c', linestyle=':', linewidth=2,
+                label=f'Punto de Referencia LLM ({ref_price})')
+                
     plt.axvspan(0, 100, color='gray', alpha=0.2, label='Fase de Calentamiento (Sin Ejecución)')
+    
     plt.title('Evolución del Precio en Mercado Artificial Híbrido (Agentes LLM con Aversión a la Pérdida)', fontsize=15)
     plt.xlabel('Tiempo de Mercado (Ticks)', fontsize=12)
     plt.ylabel('Precio del Activo', fontsize=12)
@@ -42,6 +51,8 @@ def hybrid_market_behaviour(llm_results_path):
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout()
     plt.show()
+
+
 def separate_orders(df,agent_sep):
     # 3. Separar a los agentes por su ID
     df_algo = df[df['agent_id'] <= agent_sep]
@@ -65,6 +76,7 @@ def separate_orders(df,agent_sep):
     plt.grid(True, linestyle='--', alpha=0.4)
     plt.tight_layout()
     plt.show()
+
 def plot_agent_actions_vs_time(cl_df,llm_df,ref_price):
     # Configurar un estilo limpio y profesional
     sns.set_theme(style="whitegrid")
