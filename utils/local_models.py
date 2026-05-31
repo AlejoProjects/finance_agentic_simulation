@@ -14,17 +14,26 @@ _loaded_pipelines = {}
 
 
 
-def download_models(repo_id,model_name):
+def download_models(repo_id,model_name,hf_token= None):
     # Puedes cambiar a "Qwen/Qwen3.5-4B-Instruct" según disponibilidad
     local_dir = f"./models/{model_name}"
     print(f"Initializing download off {repo_id} in  the dir: {local_dir}...")
     # Descarga el repositorio ignorando archivos redundantes para ahorrar espacio
-    snapshot_download(
-        repo_id=repo_id,
-        local_dir=local_dir,
-        ignore_patterns=["*.msgpack", "*.h5", "*.ot"], 
-        local_dir_use_symlinks=False
-    )
+    if hf_token == None:
+        snapshot_download(
+            repo_id=repo_id,
+            local_dir=local_dir,
+            ignore_patterns=["*.msgpack", "*.h5", "*.ot"], 
+            local_dir_use_symlinks=False
+        )
+    else:
+            snapshot_download(
+            repo_id=repo_id,
+            local_dir=local_dir,
+            ignore_patterns=["*.msgpack", "*.h5", "*.ot"], 
+            local_dir_use_symlinks=False,
+            token = hf_token
+        )
     print("¡Descarga completada con éxito!")
 
 
