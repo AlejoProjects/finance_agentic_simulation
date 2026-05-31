@@ -2,25 +2,66 @@
 from openai import OpenAI
 from groq import Groq
 import ollama
-def ollama_test_api_request(used_model,prompt,default_ps = {"temperature":0.1,"max_tokens":512} ):
-    print(f"[Ollama] Verificando/Descargando el modelo '{used_model}'...")
-    last_status = ""
-    for chunk in ollama.pull(used_model, stream=True):
-        status = chunk.get('status', '')
-        if status != last_status:
-            print(f" -> Status: {status}")
-            last_status = status
+import requests
+import json
+import threading
+import subprocess
+import time
+def run_ollama_serve():
+  subprocess.Popen(["ollama", "serve"])
+
+thread = threading.Thread(target=run_ollama_serve)
+thread.start()
+time.sleep(5)
+def ollama_test_api_request(used_model,prompt,default_ps = {"temperature":0.1,"max_tokens":512} ,enviroment='local'):
+    if enviroment != 'colab':
+        print(f"[Ollama] Verificando/Descargando el modelo '{used_model}'...")
+        last_status = ""
+        for chunk in ollama.pull(used_model, stream=True):
+            status = chunk.get('status', '')
+            if status != last_status:
+                print(f" -> Status: {status}")
+                last_status = status
+        
+        print("[Ollama] Procesando tu consulta...")
+        response = ollama.chat(
+            model=used_model, 
+            messages=[{'role': 'user', 'content': prompt}],
+            options={'num_ctx':default_ps["max_tokens"],
+                    'temperature':default_ps["temperature"]}
+        )
+        answer = response.message.content
+        print(f"[Ollama RESPUESTA]: {answer}")
+        return answer
+    else:
+        url = "http://localhost:11434/api/generate"
     
-    print("[Ollama] Procesando tu consulta...")
-    response = ollama.chat(
-        model=used_model, 
-        messages=[{'role': 'user', 'content': prompt}],
-        options={'num_ctx':default_ps["max_tokens"],
-                 'temperature':default_ps["temperature"]}
-    )
-    answer = response.message.content
-    print(f"[Ollama RESPUESTA]: {answer}")
-    return answer
+    payload = {
+        "model": used_model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": default_ps["temperature"], 
+            "num_predict": default_ps["max_tokens"]  
+        }
+    }
+    
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        raw_text = response.json().get("response", "")
+        
+        # Parseo del JSON como lo diseñamos anteriormente
+        start_idx = raw_text.find('{')
+        end_idx = raw_text.rfind('}') + 1
+        json_str = raw_text[start_idx:end_idx]
+        
+        return json.loads(json_str)
+        
+    except Exception as e:
+        print(f"Error en la inferencia del agente: {e}")
+        return {"justificacion": "Error de conexión/parseo", "accion": "MANTENER", "cantidad": 0}
+
 
 def groq_test_api_request(api_key,groq_model,prompt,default_ps = {"temperature":0.1,"max_tokens":1000} ):
         client = Groq(api_key=api_key) 

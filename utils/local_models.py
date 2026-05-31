@@ -2,6 +2,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from huggingface_hub import snapshot_download
 from transformers import GenerationConfig
 import torch
+import json
 
 try:
     from transformers import pipeline
@@ -92,7 +93,7 @@ def load_model(model_id: str, hardware_profile: str = "laptop_gtx"):
     )
     print(f"¡Modelo cargado exitosamente! Ubicación de tensores: {model.device}")
     return model, tokenizer
-def test_local_llm(prompt,model,tokenizer,default_ps = {"temperature":0.1,"max_tokens":312,"min_tokens":100}):
+def test_local_llm(prompt,model,tokenizer,default_ps = None):
     """
     Función de prueba para evaluar la inferencia de Qwen dentro del Notebook.
     Mantiene la estructura estricta de hiperparámetros y el parseo robusto de JSON.
@@ -125,39 +126,39 @@ def test_local_llm(prompt,model,tokenizer,default_ps = {"temperature":0.1,"max_t
     with torch.no_grad():
         generated_ids = model.generate(
             **inputs,
-            temperature=default_ps["temperature"],
+            temperature=default_ps.get("temperature", 0.1),
             top_p=0.8,
             top_k=20,
             do_sample=True,
             pad_token_id=tokenizer.eos_token_id,
-            min_new_tokens=default_ps["min_tokens"],
-            max_new_tokens=default_ps["max_tokens"]
+            max_new_tokens=default_ps.get("max_tokens", 150) 
         )
     
-    # 5. Aislar la respuesta del modelo recortando los tokens del prompt original
-    generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)]
-    respuesta_texto = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+    # 5. Aislamiento de la respuesta
+    generated_ids_trimmed = [
+        out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+    ]
+    respuesta_texto = tokenizer.batch_decode(generated_ids_trimmed, skip_special_tokens=True)[0].strip()
     
     print("=== [DEBUG] RESPUESTA CRUDA DEL MODELO ===")
     print(respuesta_texto)
     print("==========================================\n")
     
-    ## 6. Pipeline de parseo y limpieza recursiva de JSON
-    #try:
-    #   decision_json = json.loads(respuesta_texto)
-    #    return decision_json
-    #except json.JSONDecodeError:
-    #   # Fallback: Intentar extraer el JSON si el modelo incluyó texto explicativo extra
-    #    start = respuesta_texto.find('{')
-    #    end = respuesta_texto.rfind('}') + 1
-    #    if start != -1 and end != 0:
-    #        try:
-    #            return json.loads(respuesta_texto[start:end])
-    #        except json.JSONDecodeError:
-    #            pass
-    #    
-    #    # Si todo falla, devolvemos un diccionario estructurado indicando el error
-    #    return {"error": "Formato JSON inválido", "raw_output": respuesta_texto}
+    # 6. Pipeline de parseo robusto (descomentado y corregido)
+    try:
+        decision_json = json.loads(respuesta_texto)
+        return decision_json
+    except json.JSONDecodeError:
+        # Fallback de extracción
+        start = respuesta_texto.find('{')
+        end = respuesta_texto.rfind('}') + 1
+        if start != -1 and end != 0:
+            try:
+                return json.loads(respuesta_texto[start:end])
+            except json.JSONDecodeError:
+                pass
+        
+        return {"error": "El modelo no devolvió un JSON válido", "raw": respuesta_texto}
 
 def local_model_api_request(prompt: str, model: str, agent_id: int, personality_name: str, api_key: str = None) -> str:
     global _loaded_pipelines
