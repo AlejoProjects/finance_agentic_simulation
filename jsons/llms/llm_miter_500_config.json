@@ -10,7 +10,7 @@
         "sessions": [
             {
                 "sessionName": "Session_0",
-                "iterationSteps": 1,
+                "iterationSteps": 100,
                 "withOrderPlacement": true,
                 "withOrderExecution": false,
                 "withPrint": true,
@@ -33,7 +33,7 @@
     },
     "AlgorithmicGroup": {
         "class": "FCNAgent",
-        "numAgents": 395,
+        "numAgents": 0,
         "markets": [
             "Market_1"
         ],
@@ -75,7 +75,7 @@
     },
     "LLMGroup": {
         "class": "FCLAgent",
-        "numAgents": 5,
+        "numAgents": 500,
         "markets": [
             "Market_1"
         ],

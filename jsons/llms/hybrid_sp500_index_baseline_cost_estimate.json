@@ -1,0 +1,19 @@
+{
+    "provider": "groq",
+    "model": "llama-3.1-8b-instant",
+    "total_simulation_steps": 700,
+    "total_agents": 400,
+    "llm_agents": 500,
+    "estimated_llm_calls": 700,
+    "order_submission_probability": 1.0,
+    "estimated_prompt_tokens_per_call": 218,
+    "expected_response_tokens_per_call": 3,
+    "estimated_input_tokens": 152600,
+    "estimated_output_tokens": 2100,
+    "input_usd_per_1m_tokens": 0.05,
+    "output_usd_per_1m_tokens": 0.08,
+    "estimated_input_cost_usd": 0.00763,
+    "estimated_output_cost_usd": 0.000168,
+    "estimated_total_cost_usd": 0.007797999999999999,
+    "pricing_note": "This is a pre-flight estimate. Exact billing depends on the provider tokenizer, model-specific pricing, retries, cache policy, and the actual number of FCLAgent LLM calls."
+}

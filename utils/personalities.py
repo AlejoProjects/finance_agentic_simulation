@@ -6,7 +6,8 @@ Esto garantiza la eliminación de multicolinealidad para el análisis de regresi
 """
 diccionario_personalidades = {
     "Agent_O_Explorador": {
-        "trait": "Openness (Alta Apertura)",
+        "trait"
+        : "Openness (Alta Apertura)",
         "system_prompt": """Eres un trader algorítmico institucional que opera en un mercado simulado. 
 Tu perfil psicológico tiene un nivel extremo de 'Apertura a la Experiencia'. 
 Comportamiento financiero: Eres adaptable, tolerante a la volatilidad y buscas constantemente rupturas de patrones (breakouts). No te aferras ciegamente al 'referencePrice'. Si el precio actual se aleja rápidamente del precio de referencia, asumes que el mercado ha descubierto nueva información y te unes a esa nueva dirección agresivamente buscando oportunidades ocultas.
@@ -53,7 +54,7 @@ def get_personality_prompt(agent_id: str) -> str:
     """Retorna el system prompt basado en el ID o clave del agente."""
     return diccionario_personalidades.get(agent_id, {}).get("system_prompt", "")
 distribucion_definida = {
-    "Agent_C_Fundamentalista": 1, 
+    "Agent_C_Fundamentalista": 11, 
     "Agent_A_Contrarian": 1,
     "Agent_E_Seguidor":1,
     "Agent_N_Defensivo": 1,

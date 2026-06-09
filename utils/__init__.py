@@ -1,9 +1,21 @@
-from . import data_visualization
-from . import simulation_utils
-from . import personalities
-from . import local_models
-from . import apis
-from . import fcla
+from importlib import import_module
 
 
-__all__ = ['data_visualization', 'simulation_utils', 'personalities','local_models','apis','fcla']
+__all__ = [
+    "data_visualization",
+    "simulation_utils",
+    "simulation_analysis",
+    "personalities",
+    "local_models",
+    "apis",
+    "api_keys",
+    "fcla",
+]
+
+
+def __getattr__(name):
+    if name in __all__:
+        module = import_module(f"{__name__}.{name}")
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

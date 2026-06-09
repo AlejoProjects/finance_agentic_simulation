@@ -1,14 +1,15 @@
 {
     "simulation": {
         "markets": [
-            "Market"
+            "Market_1"
         ],
         "agents": [
-            "FCNAgents"
+            "AlgorithmicGroup",
+            "LLMGroup"
         ],
         "sessions": [
             {
-                "sessionName": 0,
+                "sessionName": "Session_0",
                 "iterationSteps": 200,
                 "withOrderPlacement": true,
                 "withOrderExecution": false,
@@ -16,25 +17,25 @@
                 "hiFrequencySubmitRate": 1.0
             },
             {
-                "sessionName": 1,
-                "iterationSteps": 1000,
+                "sessionName": "Session_1",
+                "iterationSteps": 500,
                 "withOrderPlacement": true,
                 "withOrderExecution": true,
                 "withPrint": false
             }
         ]
     },
-    "Market": {
+    "Market_1": {
         "class": "Market",
         "tickSize": 0.25,
         "marketPrice": 7542.1597,
         "fundamentalPrice": 7580.06
     },
-    "FCNAgents": {
+    "AlgorithmicGroup": {
         "class": "FCNAgent",
-        "numAgents": 400,
+        "numAgents": -100,
         "markets": [
-            "Market"
+            "Market_1"
         ],
         "assetVolume": 80,
         "cashAmount": 900000.0,
@@ -71,5 +72,48 @@
             0.0005,
             0.004
         ]
+    },
+    "LLMGroup": {
+        "class": "FCLAgent",
+        "numAgents": 500,
+        "markets": [
+            "Market_1"
+        ],
+        "assetVolume": 80,
+        "cashAmount": 900000.0,
+        "fundamentalWeight": {
+            "uniform": [
+                0.9,
+                1.7
+            ]
+        },
+        "chartWeight": {
+            "uniform": [
+                0.0,
+                0.35
+            ]
+        },
+        "noiseWeight": {
+            "uniform": [
+                0.0,
+                0.45
+            ]
+        },
+        "meanReversionTime": {
+            "uniform": [
+                40,
+                120
+            ]
+        },
+        "noiseScale": 0.0008,
+        "timeWindowSize": [
+            20,
+            90
+        ],
+        "orderMargin": [
+            0.0005,
+            0.004
+        ],
+        "referencePrice": 7580.06
     }
 }

@@ -214,3 +214,64 @@ def local_model_api_request(prompt: str, model: str, agent_id: int, personality_
     except Exception as e:
         print(f"  -> [ERROR API] Modelo Local falló para Agente {agent_id}: {e}")
         return "HOLD"
+
+
+def build_local_market_rag_context(
+    market_history,
+    current_agent_knowledge=None,
+    current_datetime=None,
+    date_col="date",
+    price_col="close",
+    volume_col=None,
+    lookback_rows=30,
+    max_context_rows=8,
+    extra_notes=None,
+):
+    from .apis import build_market_rag_context
+
+    return build_market_rag_context(
+        market_history=market_history,
+        current_agent_knowledge=current_agent_knowledge,
+        current_datetime=current_datetime,
+        date_col=date_col,
+        price_col=price_col,
+        volume_col=volume_col,
+        lookback_rows=lookback_rows,
+        max_context_rows=max_context_rows,
+        extra_notes=extra_notes,
+    )
+
+
+def local_model_rag_api_request(
+    prompt: str,
+    model: str,
+    agent_id: int,
+    personality_name: str,
+    market_history=None,
+    rag_context=None,
+    current_agent_knowledge=None,
+    current_datetime=None,
+    date_col="date",
+    price_col="close",
+    volume_col=None,
+    api_key: str = None,
+) -> str:
+    from .apis import augment_prompt_with_rag_context
+
+    if rag_context is None and market_history is not None:
+        rag_context = build_local_market_rag_context(
+            market_history=market_history,
+            current_agent_knowledge=current_agent_knowledge,
+            current_datetime=current_datetime,
+            date_col=date_col,
+            price_col=price_col,
+            volume_col=volume_col,
+        )
+
+    return local_model_api_request(
+        prompt=augment_prompt_with_rag_context(prompt, rag_context),
+        model=model,
+        agent_id=agent_id,
+        personality_name=personality_name,
+        api_key=api_key,
+    )

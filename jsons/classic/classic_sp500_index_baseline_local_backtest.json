@@ -9,7 +9,7 @@
         "sessions": [
             {
                 "sessionName": 0,
-                "iterationSteps": 100,
+                "iterationSteps": 200,
                 "withOrderPlacement": true,
                 "withOrderExecution": false,
                 "withPrint": true,
@@ -26,50 +26,50 @@
     },
     "Market": {
         "class": "Market",
-        "tickSize": 0.05,
-        "marketPrice": 290.0,
-        "fundamentalPrice": 300.0
+        "tickSize": 0.25,
+        "marketPrice": 5948.71,
+        "fundamentalPrice": 5864.125000000001
     },
     "FCNAgents": {
         "class": "FCNAgent",
-        "numAgents": 500,
+        "numAgents": 400,
         "markets": [
             "Market"
         ],
-        "assetVolume": 1000,
-        "cashAmount": 300000.0,
+        "assetVolume": 80,
+        "cashAmount": 900000.0,
         "fundamentalWeight": {
             "uniform": [
-                0.8,
-                1.5
+                0.9,
+                1.7
             ]
         },
         "chartWeight": {
             "uniform": [
                 0.0,
-                0.25
+                0.35
             ]
         },
         "noiseWeight": {
             "uniform": [
                 0.0,
-                0.5
+                0.45
             ]
         },
         "meanReversionTime": {
             "uniform": [
-                20,
-                50
+                40,
+                120
             ]
         },
-        "noiseScale": 0.001,
+        "noiseScale": 0.0015268470289614533,
         "timeWindowSize": [
             20,
-            40
+            90
         ],
         "orderMargin": [
-            0.01,
-            0.05
+            0.0005,
+            0.004
         ]
     }
 }

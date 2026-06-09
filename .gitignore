@@ -1,7 +1,8 @@
-.csv
-
+*.csv
+paper_build/
 __pycache__/
 /utils/__pycache__/
+
 .venv/
 models/*
 results/classic/*

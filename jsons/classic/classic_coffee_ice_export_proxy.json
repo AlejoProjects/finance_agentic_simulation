@@ -32,7 +32,7 @@
     },
     "FCNAgents": {
         "class": "FCNAgent",
-        "numAgents": 450,
+        "numAgents": 400,
         "markets": [
             "Market"
         ],

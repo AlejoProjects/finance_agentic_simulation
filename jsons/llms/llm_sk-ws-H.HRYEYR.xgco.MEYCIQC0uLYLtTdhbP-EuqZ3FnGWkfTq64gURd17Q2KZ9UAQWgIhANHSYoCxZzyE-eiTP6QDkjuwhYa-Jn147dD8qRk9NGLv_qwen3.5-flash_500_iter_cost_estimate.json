@@ -1,0 +1,19 @@
+{
+    "provider": "alibaba",
+    "model": "qwen3.5-flash",
+    "total_simulation_steps": 501,
+    "total_agents": 900,
+    "llm_agents": 50,
+    "estimated_llm_calls": 28,
+    "order_submission_probability": 1.0,
+    "estimated_prompt_tokens_per_call": 215,
+    "expected_response_tokens_per_call": 3,
+    "estimated_input_tokens": 6020,
+    "estimated_output_tokens": 84,
+    "input_usd_per_1m_tokens": 0.1,
+    "output_usd_per_1m_tokens": 0.4,
+    "estimated_input_cost_usd": 0.000602,
+    "estimated_output_cost_usd": 3.3600000000000004e-05,
+    "estimated_total_cost_usd": 0.0006356,
+    "pricing_note": "This is a pre-flight estimate. Exact billing depends on the provider tokenizer, model-specific pricing, retries, cache policy, and the actual number of FCLAgent LLM calls."
+}
