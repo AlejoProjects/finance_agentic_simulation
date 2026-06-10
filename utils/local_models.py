@@ -1,3 +1,9 @@
+from __future__ import annotations
+
+from typing import Any
+
+import pandas as pd
+
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from huggingface_hub import snapshot_download
 from transformers import GenerationConfig
@@ -14,8 +20,15 @@ _loaded_pipelines = {}
 
 
 
-def download_models(repo_id,model_name,hf_token= None):
+def download_models(repo_id: str,model_name: str,hf_token: str | None= None) -> None:
     # Puedes cambiar a "Qwen/Qwen3.5-4B-Instruct" según disponibilidad
+    """This function downloads and stores a model from Hugging Face.
+
+    Params:
+        repo_id: Hugging Face repository identifier.
+        model_name: Local model directory name.
+        hf_token: Optional Hugging Face token.
+    """
     local_dir = f"./models/{model_name}"
     print(f"Initializing download off {repo_id} in  the dir: {local_dir}...")
     # Descarga el repositorio ignorando archivos redundantes para ahorrar espacio
@@ -45,13 +58,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-def load_model(model_id: str, hardware_profile: str = "laptop_gtx"):
-    """
-    Carga un modelo LLM local optimizado según el hardware disponible.
-    
-    Args:
-        model_id (str): Nombre de la carpeta del modelo en ./models/
-        hardware_profile (str): 'laptop_gtx' (4GB VRAM) o 'lab_workstation' (Alta VRAM)
+def load_model(model_id: str, hardware_profile: str = "laptop_gtx") -> tuple[Any, Any]:
+    """This function loads a local model for the selected hardware profile.
+
+    Params:
+        model_id: Local model identifier.
+        hardware_profile: Target hardware profile.
     """
     path_al_modelo = f"./models/{model_id}"
     
@@ -102,10 +114,14 @@ def load_model(model_id: str, hardware_profile: str = "laptop_gtx"):
     )
     print(f"¡Modelo cargado exitosamente! Ubicación de tensores: {model.device}")
     return model, tokenizer
-def test_local_llm(prompt,model,tokenizer,default_ps = None):
-    """
-    Función de prueba para evaluar la inferencia de Qwen dentro del Notebook.
-    Mantiene la estructura estricta de hiperparámetros y el parseo robusto de JSON.
+def test_local_llm(prompt: str,model: Any,tokenizer: Any,default_ps: dict[str, float | int] | None = None) -> dict[str, Any]:
+    """This function runs a test inference on a loaded local model.
+
+    Params:
+        prompt: Prompt sent to the model.
+        model: Model name or loaded model.
+        tokenizer: Loaded model tokenizer.
+        default_ps: Default generation parameters.
     """
     
     # 1. Definición del sistema base para forzar la estructura de salida JSON esperada
@@ -169,7 +185,16 @@ def test_local_llm(prompt,model,tokenizer,default_ps = None):
         
         return {"error": "El modelo no devolvió un JSON válido", "raw": respuesta_texto}
 
-def local_model_api_request(prompt: str, model: str, agent_id: int, personality_name: str, api_key: str = None) -> str:
+def local_model_api_request(prompt: str, model: str, agent_id: int, personality_name: str, api_key: str | None = None) -> str:
+    """This function requests a trading intention from a local model.
+
+    Params:
+        prompt: Prompt sent to the model.
+        model: Model name or loaded model.
+        agent_id: Agent identifier.
+        personality_name: Agent personality name.
+        api_key: Provider API key.
+    """
     global _loaded_pipelines
     
     if pipeline is None:
@@ -217,16 +242,29 @@ def local_model_api_request(prompt: str, model: str, agent_id: int, personality_
 
 
 def build_local_market_rag_context(
-    market_history,
-    current_agent_knowledge=None,
-    current_datetime=None,
-    date_col="date",
-    price_col="close",
-    volume_col=None,
-    lookback_rows=30,
-    max_context_rows=8,
-    extra_notes=None,
-):
+    market_history: Any,
+    current_agent_knowledge: str | pd.Timestamp | None=None,
+    current_datetime: str | pd.Timestamp | None=None,
+    date_col: str | None="date",
+    price_col: str | None="close",
+    volume_col: str | None=None,
+    lookback_rows: int=30,
+    max_context_rows: int=8,
+    extra_notes: str | None=None,
+) -> str:
+    """This function builds historical context for a local model.
+
+    Params:
+        market_history: Historical market observations.
+        current_agent_knowledge: Latest date known by the agent.
+        current_datetime: Current analysis timestamp.
+        date_col: Date column name.
+        price_col: Price column name.
+        volume_col: Volume column name.
+        lookback_rows: Number of recent rows considered.
+        max_context_rows: Maximum rows included in context.
+        extra_notes: Optional context notes.
+    """
     from .apis import build_market_rag_context
 
     return build_market_rag_context(
@@ -247,15 +285,31 @@ def local_model_rag_api_request(
     model: str,
     agent_id: int,
     personality_name: str,
-    market_history=None,
-    rag_context=None,
-    current_agent_knowledge=None,
-    current_datetime=None,
-    date_col="date",
-    price_col="close",
-    volume_col=None,
-    api_key: str = None,
+    market_history: Any | None=None,
+    rag_context: str | None=None,
+    current_agent_knowledge: str | pd.Timestamp | None=None,
+    current_datetime: str | pd.Timestamp | None=None,
+    date_col: str | None="date",
+    price_col: str | None="close",
+    volume_col: str | None=None,
+    api_key: str | None = None,
 ) -> str:
+    """This function requests a context-augmented intention from a local model.
+
+    Params:
+        prompt: Prompt sent to the model.
+        model: Model name or loaded model.
+        agent_id: Agent identifier.
+        personality_name: Agent personality name.
+        market_history: Historical market observations.
+        rag_context: Optional historical context.
+        current_agent_knowledge: Latest date known by the agent.
+        current_datetime: Current analysis timestamp.
+        date_col: Date column name.
+        price_col: Price column name.
+        volume_col: Volume column name.
+        api_key: Provider API key.
+    """
     from .apis import augment_prompt_with_rag_context
 
     if rag_context is None and market_history is not None:

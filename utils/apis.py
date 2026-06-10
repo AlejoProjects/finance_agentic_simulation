@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from typing import Any
+
+import pandas as pd
 
 #Only for colab
 #import requests
@@ -74,26 +79,45 @@ DEFAULT_LLM_PRICING_USD_PER_1M = {
 
 
 def normalize_provider_name(provider: str) -> str:
+    """This function resolves a provider alias to its canonical name.
+
+    Params:
+        provider: LLM provider name.
+    """
     provider_key = (provider or "").strip().lower()
     return PROVIDER_ALIASES.get(provider_key, provider_key)
 
 
 def rough_token_count(text: str, chars_per_token: float = 4.0) -> int:
-    """Small dependency-free token estimate for pre-flight budgeting."""
+    """This function estimates token usage from text length.
+
+    Params:
+        text: Input text.
+        chars_per_token: Estimated characters per token.
+    """
     if not text:
         return 0
     return max(1, int(round(len(str(text)) / chars_per_token)))
 
 
 def fcl_prompt_cost_proxy(
-    reference_price=300.0,
-    current_price=300.0,
-    current_time=0,
-    all_time_high=None,
-    all_time_low=None,
-    rag_context="",
-):
-    """Representative FCLAgent prompt used only for token-cost estimation."""
+    reference_price: float=300.0,
+    current_price: float=300.0,
+    current_time: int=0,
+    all_time_high: float | None=None,
+    all_time_low: float | None=None,
+    rag_context: str | None="",
+) -> str:
+    """This function builds a representative FCL prompt for cost estimation.
+
+    Params:
+        reference_price: Agent reference price.
+        current_price: Current market price.
+        current_time: Current decision time.
+        all_time_high: Observed maximum price.
+        all_time_low: Observed minimum price.
+        rag_context: Optional historical context.
+    """
     all_time_high = current_price if all_time_high is None else all_time_high
     all_time_low = current_price if all_time_low is None else all_time_low
     high_nearness = current_price / all_time_high if all_time_high else 0.0
@@ -127,8 +151,14 @@ def fcl_prompt_cost_proxy(
     """.strip()
 
 
-def get_llm_token_price(provider: str, model: str = None, pricing_table=None):
-    """Return USD per 1M input/output tokens for a provider/model pair."""
+def get_llm_token_price(provider: str, model: str | None = None, pricing_table: dict[str, Any] | None=None) -> dict[str, float]:
+    """This function returns input and output token prices for a model.
+
+    Params:
+        provider: LLM provider name.
+        model: Model name or loaded model.
+        pricing_table: Optional model pricing table.
+    """
     pricing_table = pricing_table or DEFAULT_LLM_PRICING_USD_PER_1M
     provider_key = normalize_provider_name(provider)
     provider_prices = pricing_table.get(provider_key, {})
@@ -142,8 +172,14 @@ def get_llm_token_price(provider: str, model: str = None, pricing_table=None):
     return provider_prices.get("default", {"input": 0.0, "output": 0.0})
 
 
-def estimate_llm_call_count(c_params, l_params, order_submission_probability=1.0):
-    """Estimate how many times FCLAgent will call an LLM during the run."""
+def estimate_llm_call_count(c_params: dict[str, Any], l_params: dict[str, Any] | None, order_submission_probability: float=1.0) -> int:
+    """This function estimates LLM calls for a hybrid simulation.
+
+    Params:
+        c_params: Classical simulation parameters.
+        l_params: LLM-agent parameters.
+        order_submission_probability: Expected order-submission probability.
+    """
     if not c_params or not l_params:
         return 0
     iter_steps = c_params.get("iter_steps", [0, 0])
@@ -155,21 +191,30 @@ def estimate_llm_call_count(c_params, l_params, order_submission_probability=1.0
 
 
 def estimate_llm_simulation_cost(
-    c_params,
-    l_params,
-    provider="ollama",
-    model=None,
-    rag_context="",
-    expected_response_tokens=3,
-    order_submission_probability=1.0,
-    prompt_tokens=None,
-    pricing_override=None,
-    pricing_table=None,
-):
-    """Estimate cloud LLM cost before running a hybrid market simulation.
+    c_params: dict[str, Any],
+    l_params: dict[str, Any],
+    provider: str="ollama",
+    model: str | None=None,
+    rag_context: str="",
+    expected_response_tokens: int=3,
+    order_submission_probability: float=1.0,
+    prompt_tokens: int | None=None,
+    pricing_override: dict[str, float] | None=None,
+    pricing_table: dict[str, Any] | None=None,
+) -> dict[str, Any]:
+    """This function estimates token usage and API cost before a simulation.
 
-    The model is: estimated_calls * (prompt_tokens * input_rate + response_tokens * output_rate).
-    Prices are USD per 1M tokens.
+    Params:
+        c_params: Classical simulation parameters.
+        l_params: LLM-agent parameters.
+        provider: LLM provider name.
+        model: Model name or loaded model.
+        rag_context: Optional historical context.
+        expected_response_tokens: Expected tokens per response.
+        order_submission_probability: Expected order-submission probability.
+        prompt_tokens: Optional prompt-token estimate.
+        pricing_override: Optional input and output token prices.
+        pricing_table: Optional model pricing table.
     """
     if not l_params:
         raise ValueError("l_params is required for hybrid cost estimation.")
@@ -220,7 +265,12 @@ def estimate_llm_simulation_cost(
     }
 
 
-def print_llm_cost_estimate(cost_estimate):
+def print_llm_cost_estimate(cost_estimate: dict[str, Any]) -> None:
+    """This function prints a formatted LLM cost estimate.
+
+    Params:
+        cost_estimate: Calculated cost estimate.
+    """
     print("\n=== ESTIMATED HYBRID LLM COST ===")
     print(f"Provider / model: {cost_estimate['provider']} / {cost_estimate['model']}")
     print(f"Simulation steps: {cost_estimate['total_simulation_steps']}")
@@ -239,8 +289,13 @@ def print_llm_cost_estimate(cost_estimate):
     print("=================================\n")
 
 
-def save_llm_cost_estimate(cost_estimate, file_path):
-    """Persist a cost estimate next to the simulation config for reproducibility."""
+def save_llm_cost_estimate(cost_estimate: dict[str, Any], file_path: str | os.PathLike[str]) -> str | os.PathLike[str]:
+    """This function saves an LLM cost estimate as JSON.
+
+    Params:
+        cost_estimate: Calculated cost estimate.
+        file_path: Target file path.
+    """
     directory = os.path.dirname(file_path)
     if directory:
         os.makedirs(directory, exist_ok=True)
@@ -249,7 +304,12 @@ def save_llm_cost_estimate(cost_estimate, file_path):
     return file_path
 
 
-def _coerce_market_history_df(market_history):
+def _coerce_market_history_df(market_history: Any) -> pd.DataFrame:
+    """This function converts market history into a DataFrame.
+
+    Params:
+        market_history: Historical market observations.
+    """
     import pandas as pd
 
     if market_history is None:
@@ -262,12 +322,19 @@ def _coerce_market_history_df(market_history):
 
 
 def split_known_future_market_data(
-    market_history,
-    current_agent_knowledge=None,
-    holdout_steps=None,
-    date_col="date",
-):
-    """Split historical data into agent-known rows and future holdout rows."""
+    market_history: Any,
+    current_agent_knowledge: str | pd.Timestamp | None=None,
+    holdout_steps: int | None=None,
+    date_col: str | None="date",
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """This function separates known market history from its future holdout.
+
+    Params:
+        market_history: Historical market observations.
+        current_agent_knowledge: Latest date known by the agent.
+        holdout_steps: Reserved future observations.
+        date_col: Date column name.
+    """
     df = _coerce_market_history_df(market_history)
     if df.empty:
         return df.copy(), df.copy()
@@ -297,17 +364,29 @@ def split_known_future_market_data(
 
 
 def build_market_rag_context(
-    market_history,
-    current_agent_knowledge=None,
-    current_datetime=None,
-    date_col="date",
-    price_col="close",
-    volume_col=None,
-    lookback_rows=30,
-    max_context_rows=8,
-    extra_notes=None,
-):
-    """Create a compact retrieval context from market rows known before the decision time."""
+    market_history: Any,
+    current_agent_knowledge: str | pd.Timestamp | None=None,
+    current_datetime: str | pd.Timestamp | None=None,
+    date_col: str | None="date",
+    price_col: str | None="close",
+    volume_col: str | None=None,
+    lookback_rows: int=30,
+    max_context_rows: int=8,
+    extra_notes: str | None=None,
+) -> str:
+    """This function summarizes market history available before a decision time.
+
+    Params:
+        market_history: Historical market observations.
+        current_agent_knowledge: Latest date known by the agent.
+        current_datetime: Current analysis timestamp.
+        date_col: Date column name.
+        price_col: Price column name.
+        volume_col: Volume column name.
+        lookback_rows: Number of recent rows considered.
+        max_context_rows: Maximum rows included in context.
+        extra_notes: Optional context notes.
+    """
     import pandas as pd
 
     df = _coerce_market_history_df(market_history)
@@ -369,17 +448,30 @@ def build_market_rag_context(
     return "\n".join(lines)
 
 
-def augment_prompt_with_rag_context(prompt, rag_context=None):
+def augment_prompt_with_rag_context(prompt: str, rag_context: str | None=None) -> str:
+    """This function appends retrieved market context to a prompt.
+
+    Params:
+        prompt: Prompt sent to the model.
+        rag_context: Optional historical context.
+    """
     if not rag_context:
         return prompt
     return f"{prompt}\n\nRAG market context:\n{rag_context}"
 
 
-def run_ollama_serve():
+def run_ollama_serve() -> None:
+    """This function starts the Ollama server process.
+    """
     subprocess.Popen(["ollama", "serve"])
 
 
-def start_ollama_serve_background(wait_seconds=5):
+def start_ollama_serve_background(wait_seconds: float=5) -> threading.Thread:
+    """This function starts Ollama in a background thread.
+
+    Params:
+        wait_seconds: Startup wait duration in seconds.
+    """
     thread = threading.Thread(target=run_ollama_serve, daemon=True)
     thread.start()
     time.sleep(wait_seconds)
@@ -390,7 +482,15 @@ if os.getenv("AUTO_START_OLLAMA", "0") == "1":
     start_ollama_serve_background()
 
 
-def ollama_test_api_request(used_model,prompt,default_ps = {"temperature":0.1,"max_tokens":512} ,enviroment='local'):
+def ollama_test_api_request(used_model: str,prompt: str,default_ps: dict[str, float | int] = {"temperature":0.1,"max_tokens":512} ,enviroment: str='local') -> str | dict[str, Any]:
+    """This function sends a test prompt to an Ollama model.
+
+    Params:
+        used_model: Selected model name.
+        prompt: Prompt sent to the model.
+        default_ps: Default generation parameters.
+        enviroment: Target execution environment.
+    """
     if ollama is None:
         raise ImportError("The 'ollama' package is required for Ollama calls. Install it before running local LLM simulations.")
     if enviroment != 'colab':
@@ -447,7 +547,15 @@ def ollama_test_api_request(used_model,prompt,default_ps = {"temperature":0.1,"m
         return {"justificacion": "Error de conexión/parseo", "accion": "MANTENER", "cantidad": 0}
 
 
-def groq_test_api_request(api_key,groq_model,prompt,default_ps = {"temperature":0.1,"max_tokens":1000} ):
+def groq_test_api_request(api_key: str | None,groq_model: str,prompt: str,default_ps: dict[str, float | int] = {"temperature":0.1,"max_tokens":1000} ) -> str:
+        """This function sends a test prompt to a Groq model.
+
+        Params:
+            api_key: Provider API key.
+            groq_model: Groq model name.
+            prompt: Prompt sent to the model.
+            default_ps: Default generation parameters.
+        """
         if Groq is None:
             raise ImportError("The 'groq' package is required for Groq calls. Install it before running Groq simulations.")
         client = Groq(api_key=api_key) 
@@ -476,7 +584,15 @@ def groq_test_api_request(api_key,groq_model,prompt,default_ps = {"temperature":
             answer += chunk_text
         return answer
 
-def nvidia_test_api_request(nvidia_api_key,nvidia_model,prompt,default_ps = {"temperature":0.1,"max_tokens":1000} ):
+def nvidia_test_api_request(nvidia_api_key: str,nvidia_model: str,prompt: str,default_ps: dict[str, float | int] = {"temperature":0.1,"max_tokens":1000} ) -> str:
+        """This function sends a test prompt to an NVIDIA model.
+
+        Params:
+            nvidia_api_key: NVIDIA API key.
+            nvidia_model: NVIDIA model name.
+            prompt: Prompt sent to the model.
+            default_ps: Default generation parameters.
+        """
         if OpenAI is None:
             raise ImportError("The 'openai' package is required for NVIDIA-compatible calls.")
         print(f"[NVIDIA] Conectando a la API con el modelo '{nvidia_model}'...")
@@ -512,7 +628,16 @@ def nvidia_test_api_request(nvidia_api_key,nvidia_model,prompt,default_ps = {"te
         answer = "".join(texto_recibido)
         return answer
 
-def alibaba_test_api_request(api_key, model, prompt, base_url=None, default_ps={"temperature":0.1,"max_tokens":1000}):
+def alibaba_test_api_request(api_key: str | None, model: str, prompt: str, base_url: str | None=None, default_ps: dict[str, float | int]={"temperature":0.1,"max_tokens":1000}) -> str:
+        """This function sends a test prompt to an Alibaba Cloud model.
+
+        Params:
+            api_key: Provider API key.
+            model: Model name or loaded model.
+            prompt: Prompt sent to the model.
+            base_url: Optional provider endpoint.
+            default_ps: Default generation parameters.
+        """
         if OpenAI is None:
             raise ImportError("The 'openai' package is required for Alibaba OpenAI-compatible calls.")
         print(f"[Alibaba Cloud] Conectando a Model Studio con el modelo '{model}'...")
@@ -530,7 +655,15 @@ def alibaba_test_api_request(api_key, model, prompt, base_url=None, default_ps={
         print(f"[Alibaba Cloud RESPUESTA]: {answer}")
         return answer
 
-def test_llm(used_model: str, service: str, api_key="", default_llm_settings = {"temperature":0.1,"max_tokens":1000}):
+def test_llm(used_model: str, service: str, api_key: str="", default_llm_settings: dict[str, float | int] = {"temperature":0.1,"max_tokens":1000}) -> str:
+    """This function tests the selected LLM provider with one prompt.
+
+    Params:
+        used_model: Selected model name.
+        service: Selected LLM service.
+        api_key: Provider API key.
+        default_llm_settings: Default LLM generation settings.
+    """
     prompt = """
     Eres un inversor en un mercado continuo de doble subasta. 
     Tu precio de compra de referencia fue 800.
@@ -561,12 +694,24 @@ def test_llm(used_model: str, service: str, api_key="", default_llm_settings = {
         return answer
 
 def _parse_intent(answer: str) -> str:
-    """Función auxiliar DRY para limpiar la respuesta del LLM y devolver la intención."""
+    """This function extracts a valid trading intention from an LLM response.
+
+    Params:
+        answer: Raw LLM response.
+    """
     if "BUY" in answer: return "BUY"
     elif "SELL" in answer: return "SELL"
     else: return "HOLD"
 
 def ollama_sim_api_request(prompt: str, model: str, agent_id: int, personality_name: str) -> str:
+    """This function requests a trading intention from Ollama.
+
+    Params:
+        prompt: Prompt sent to the model.
+        model: Model name or loaded model.
+        agent_id: Agent identifier.
+        personality_name: Agent personality name.
+    """
     if ollama is None:
         print(f"  -> [ERROR API] Ollama package is not installed for Agente {agent_id}.")
         return "HOLD"
@@ -589,6 +734,16 @@ def ollama_sim_api_request(prompt: str, model: str, agent_id: int, personality_n
         return "HOLD"
 
 def nvidia_sim_api_request(url: str, api_key: str, prompt: str, model: str, agent_id: int, personality_name: str) -> str:
+    """This function requests a trading intention from NVIDIA.
+
+    Params:
+        url: Provider endpoint URL.
+        api_key: Provider API key.
+        prompt: Prompt sent to the model.
+        model: Model name or loaded model.
+        agent_id: Agent identifier.
+        personality_name: Agent personality name.
+    """
     if OpenAI is None:
         print(f"  -> [ERROR API] OpenAI package is not installed for Nvidia-compatible calls. Agente {agent_id} fuerza HOLD.")
         return "HOLD"
@@ -608,6 +763,15 @@ def nvidia_sim_api_request(url: str, api_key: str, prompt: str, model: str, agen
         return "HOLD"
 
 def groq_sim_api_request(api_key: str, groq_model: str, prompt: str, agent_id: int, personality_name: str) -> str:
+    """This function requests a trading intention from Groq.
+
+    Params:
+        api_key: Provider API key.
+        groq_model: Groq model name.
+        prompt: Prompt sent to the model.
+        agent_id: Agent identifier.
+        personality_name: Agent personality name.
+    """
     if Groq is None:
         raise ImportError("El módulo 'groq' no está instalado. Ejecuta: pip install groq")
         
@@ -633,9 +797,20 @@ def alibaba_sim_api_request(
     prompt: str,
     agent_id: int,
     personality_name: str,
-    base_url: str = None,
-    rag_context: str = None,
+    base_url: str | None = None,
+    rag_context: str | None = None,
 ) -> str:
+    """This function requests a trading intention from Alibaba Cloud.
+
+    Params:
+        api_key: Provider API key.
+        model: Model name or loaded model.
+        prompt: Prompt sent to the model.
+        agent_id: Agent identifier.
+        personality_name: Agent personality name.
+        base_url: Optional provider endpoint.
+        rag_context: Optional historical context.
+    """
     if OpenAI is None:
         print(f"  -> [ERROR API] OpenAI package is not installed for Alibaba-compatible calls. Agente {agent_id} fuerza HOLD.")
         return "HOLD"

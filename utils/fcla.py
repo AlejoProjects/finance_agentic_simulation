@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Dict, List, Optional, Union
 import math
 import textwrap
@@ -15,7 +17,12 @@ from . import local_models as lm
 class CustomOrderLogger(MarketStepSaver):
     """Market logger with order, execution, and FCL portfolio traces."""
 
-    def __init__(self, portfolio_agent_classes=("FCLAgent",)):
+    def __init__(self, portfolio_agent_classes: tuple[str, ...] | list[str]=("FCLAgent",)) -> None:
+        """This function initializes order, execution, and portfolio log storage.
+
+        Params:
+            portfolio_agent_classes: Agent classes included in portfolio logs.
+        """
         super().__init__()
         self.individual_orders = []
         self.individual_executions = []
@@ -23,6 +30,11 @@ class CustomOrderLogger(MarketStepSaver):
         self.portfolio_agent_classes = set(portfolio_agent_classes or [])
 
     def process_order_log(self, log: OrderLog) -> None:
+        """This function records one submitted market order.
+
+        Params:
+            log: PAMS log event.
+        """
         super().process_order_log(log)
         self.individual_orders.append({
             "market_time": log.time,
@@ -37,6 +49,11 @@ class CustomOrderLogger(MarketStepSaver):
         })
 
     def process_execution_log(self, log: ExecutionLog) -> None:
+        """This function records one completed market execution.
+
+        Params:
+            log: PAMS log event.
+        """
         self.individual_executions.append({
             "market_time": log.time,
             "market_id": log.market_id,
@@ -49,6 +66,11 @@ class CustomOrderLogger(MarketStepSaver):
         })
 
     def process_market_step_end_log(self, log: MarketStepEndLog) -> None:
+        """This function records eligible agent portfolios after a market step.
+
+        Params:
+            log: PAMS log event.
+        """
         super().process_market_step_end_log(log)
         market = log.market
         current_price = market.get_market_price()
@@ -83,7 +105,7 @@ class CustomOrderLogger(MarketStepSaver):
 
 
 class FCLAgent(FCNAgent):
-    _personalities: Dict[str, str] = {}
+    _personalities: Dict[str, Any] = {}
     _personality_distribution: Optional[Dict[str, int]] = None
     _agent_counter: int = 0
 
@@ -97,9 +119,15 @@ class FCLAgent(FCNAgent):
     @classmethod
     def configure_personalities(
         cls,
-        personalities: Dict[str, str],
+        personalities: Dict[str, Any],
         distribution: Optional[Dict[str, int]] = None,
-    ):
+    ) -> None:
+        """This function configures personality prompts and their distribution.
+
+        Params:
+            personalities: Available personality prompts.
+            distribution: Agent count per personality.
+        """
         cls._personalities = personalities
         cls._personality_distribution = distribution
         cls._agent_counter = 0
@@ -111,15 +139,27 @@ class FCLAgent(FCNAgent):
         model: str,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
-    ):
+    ) -> None:
+        """This function configures the LLM provider used by every FCL agent.
+
+        Params:
+            provider: LLM provider name.
+            model: Model name or loaded model.
+            api_key: Provider API key.
+            base_url: Optional provider endpoint.
+        """
         cls._api_provider = pi.normalize_provider_name(provider)
         cls._api_model = model
         cls._api_key = api_key
         cls._api_base_url = base_url
 
     @classmethod
-    def configure_rag_context(cls, rag_context: str = ""):
-        """Attach historical market context to every FCLAgent prompt."""
+    def configure_rag_context(cls, rag_context: str = "") -> None:
+        """This function assigns shared historical context to every FCL agent.
+
+        Params:
+            rag_context: Optional historical context.
+        """
         cls._static_rag_context = rag_context or ""
 
     def setup(
@@ -129,6 +169,14 @@ class FCLAgent(FCNAgent):
         *args: Any,
         **kwargs: Any,
     ) -> None:
+        """This function initializes an FCL agent from simulation settings.
+
+        Params:
+            settings: Agent configuration settings.
+            accessible_markets_ids: Market identifiers available to the agent.
+            args: Additional positional setup arguments.
+            kwargs: Additional keyword setup arguments.
+        """
         super().setup(settings, accessible_markets_ids, *args, **kwargs)
         self.my_market_id = accessible_markets_ids[0]
         self.reference_price = settings.get("referencePrice", 10.50)
@@ -154,6 +202,11 @@ class FCLAgent(FCNAgent):
         print(f"[SETUP] Agente FCL {self.agent_id} creado con Personalidad: '{self.personality_name}'")
 
     def _call_llm_api(self, prompt: str) -> str:
+        """This function routes a prompt to the configured LLM provider.
+
+        Params:
+            prompt: Prompt sent to the model.
+        """
         provider = FCLAgent._api_provider
         model = FCLAgent._api_model
         api_key = FCLAgent._api_key
@@ -209,6 +262,11 @@ class FCLAgent(FCNAgent):
         return "HOLD"
 
     def executed_order(self, log: ExecutionLog) -> None:
+        """This function updates agent history after an execution.
+
+        Params:
+            log: PAMS log event.
+        """
         if log.buy_agent_id == self.agent_id:
             side = "BUY"
         elif log.sell_agent_id == self.agent_id:
@@ -224,7 +282,13 @@ class FCLAgent(FCNAgent):
         })
         self.trading_history = self.trading_history[-8:]
 
-    def _safe_market_price_window(self, market: Market, current_time: int):
+    def _safe_market_price_window(self, market: Market, current_time: int) -> tuple[float, float, float]:
+        """This function returns an available recent market-price window.
+
+        Params:
+            market: Current market instance.
+            current_time: Current decision time.
+        """
         prices = []
         for t in range(current_time + 1):
             try:
@@ -239,6 +303,12 @@ class FCLAgent(FCNAgent):
         return current_price, max(prices), min(prices)
 
     def _portfolio_context(self, market: Market, current_price: float) -> str:
+        """This function formats the agent portfolio state for its prompt.
+
+        Params:
+            market: Current market instance.
+            current_price: Current market price.
+        """
         asset_volume = self.get_asset_volume(market.market_id)
         cash_amount = self.get_cash_amount()
         asset_value = current_price * asset_volume
@@ -257,6 +327,11 @@ class FCLAgent(FCNAgent):
         )
 
     def submit_orders(self, markets: List[Market]) -> List[Union[Order, Cancel]]:
+        """This function converts an LLM intention into market orders.
+
+        Params:
+            markets: Accessible market instances.
+        """
         algorithmic_orders = super().submit_orders(markets)
         if not algorithmic_orders:
             return []

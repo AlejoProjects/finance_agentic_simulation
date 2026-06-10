@@ -1,8 +1,16 @@
+from __future__ import annotations
+
+import os
 
 from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
-def market_behaviour(results_path):
+def market_behaviour(results_path: str | os.PathLike[str]) -> None:
+    """This function plots price and volume for a classical simulation.
+
+    Params:
+        results_path: Classical results CSV path.
+    """
     df = pd.read_csv(results_path)  
     # Prints the data to see the exported data
     print("Columnas exportadas por PAMS:", df.columns.tolist())
@@ -23,7 +31,13 @@ def market_behaviour(results_path):
     plt.grid(True)
     plt.show()
 
-def hybrid_market_behaviour(llm_results_path, ref_price):
+def hybrid_market_behaviour(llm_results_path: str | os.PathLike[str], ref_price: float) -> None:
+    """This function plots price and volume for a hybrid simulation.
+
+    Params:
+        llm_results_path: Hybrid results CSV path.
+        ref_price: Reference market price.
+    """
     df = pd.read_csv(llm_results_path)
     plt.figure(figsize=(14, 7))
     
@@ -53,8 +67,14 @@ def hybrid_market_behaviour(llm_results_path, ref_price):
     plt.show()
 
 
-def separate_orders(df,agent_sep):
+def separate_orders(df: pd.DataFrame,agent_sep: int) -> None:
     # 3. Separar a los agentes por su ID
+    """This function separates buy and sell orders for an agent group.
+
+    Params:
+        df: Input DataFrame.
+        agent_sep: Agent identifier threshold.
+    """
     df_algo = df[df['agent_id'] <= agent_sep]
     df_llm = df[df['agent_id'] > agent_sep]
     plt.figure(figsize=(14, 7))
@@ -77,8 +97,15 @@ def separate_orders(df,agent_sep):
     plt.tight_layout()
     plt.show()
 
-def plot_agent_actions_vs_time(cl_df,llm_df,ref_price):
+def plot_agent_actions_vs_time(cl_df: pd.DataFrame,llm_df: pd.DataFrame,ref_price: float) -> None:
     # Configurar un estilo limpio y profesional
+    """This function plots classical and LLM orders through time.
+
+    Params:
+        cl_df: Classical-agent orders.
+        llm_df: LLM-agent orders.
+        ref_price: Reference market price.
+    """
     sns.set_theme(style="whitegrid")
     plt.figure(figsize=(14, 7))
     # 1. Graficar las órdenes de los Agentes Clásicos (FCN) en el fondo

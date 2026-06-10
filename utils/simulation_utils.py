@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 from pams.runners.sequential import SequentialRunner
 from . import data_visualization as dv
 from . import personalities as pr
@@ -10,7 +14,13 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
-def classic_parameters(c_params,file_name):
+def classic_parameters(c_params: dict[str, Any] | None,file_name: str) -> None:
+    """This function writes a classical FCN simulation configuration.
+
+    Params:
+        c_params: Classical simulation parameters.
+        file_name: Simulation or data file name.
+    """
     if c_params == None:
         c_params = {"iter_steps":[0,2000],"tickSize":0.05,"marketPrice":300.0,"total_agents":400,"asset_vol":1000,"cash_am":300000.0,"mean_rev_time":[20,50],"time_window":[20,40],"order_margin":[0.01,0.05],"fundamental_price":300.0}
 
@@ -77,8 +87,15 @@ def classic_parameters(c_params,file_name):
         json.dump(classic_json,file, indent=4)
 
 
-def agentic_parameters(c_params, l_params, file_name):
+def agentic_parameters(c_params: dict[str, Any], l_params: dict[str, Any], file_name: str) -> None:
     # Calculate regular agents so total matches (400 total - 5 LLMs = 395 FCNAgents)
+    """This function writes a hybrid FCN-FCL simulation configuration.
+
+    Params:
+        c_params: Classical simulation parameters.
+        l_params: LLM-agent parameters.
+        file_name: Simulation or data file name.
+    """
     algo_agents = c_params["total_agents"] - l_params["total_agents"]
     
     agentic_json = {
@@ -151,16 +168,29 @@ def agentic_parameters(c_params, l_params, file_name):
     print(f"Hybrid JSON configuration generated at: {file_path}")
     
 def run_sim(
-    json_path,
-    sim_type,
-    name,
-    u_provider="ollama",
-    u_model="qwen3:4b",
-    hybrid=False,
-    api_key="",
-    base_url=None,
-    rag_context="",
-):
+    json_path: str | os.PathLike[str],
+    sim_type: str,
+    name: str,
+    u_provider: str="ollama",
+    u_model: str="qwen3:4b",
+    hybrid: bool=False,
+    api_key: str | None="",
+    base_url: str | None=None,
+    rag_context: str="",
+) -> tuple[SequentialRunner, fc.CustomOrderLogger]:
+    """This function executes one configured market simulation.
+
+    Params:
+        json_path: Simulation JSON path.
+        sim_type: Simulation type: classic or llms.
+        name: Requested module or simulation name.
+        u_provider: Configured LLM provider.
+        u_model: Configured model name.
+        hybrid: Whether to run FCL agents.
+        api_key: Provider API key.
+        base_url: Optional provider endpoint.
+        rag_context: Optional historical context.
+    """
     if hybrid:
         fc.FCLAgent.configure_personalities(pr.diccionario_personalidades, distribution=pr.distribucion_definida)
         fc.FCLAgent.configure_api(provider=u_provider, model=u_model, api_key=api_key, base_url=base_url)
@@ -213,7 +243,12 @@ def run_sim(
         print(f"Agent portfolios saved on '{portfolios_path}'")
     
     return runner, logger
-def statistical_info(df):
+def statistical_info(df: pd.DataFrame) -> None:
+    """This function prints descriptive statistics for simulation data.
+
+    Params:
+        df: Input DataFrame.
+    """
     print("\n" + "="*40)
     print("📊 RESUMEN ESTADÍSTICO DE LA SIMULACIÓN")
     print("="*40)
@@ -227,8 +262,14 @@ def statistical_info(df):
     print(f"▶ Volatilidad (Desv. E): {df_real['market_price'].std():.4f}")
     print("="*40)
 
-def agents_order_separation(runner,logger):
+def agents_order_separation(runner: SequentialRunner,logger: fc.CustomOrderLogger) -> tuple[pd.DataFrame, pd.DataFrame]:
     #Crear un mapa dinámico de ID de Agente -> Tipo de Agente
+    """This function separates logged FCN and FCL orders.
+
+    Params:
+        runner: Completed PAMS runner.
+        logger: Simulation logger.
+    """
     agent_type_mapping = {}
     for agent in runner.simulator.agents:
         # Mapea, por ejemplo: {0: 'FCNAgent', 95: 'FCLAgent'}
@@ -256,18 +297,33 @@ def agents_order_separation(runner,logger):
     return df_llm_orders,df_classical_orders
 
 def sim_loop(
-    file_name,
-    c_params,
-    l_params=None,
-    hybrid=False,
-    provider="ollama",
-    model="qwen3:4b",
-    used_api_key="",
-    base_url=None,
-    rag_context="",
-    cost_settings=None,
-    api_key=None,
-):
+    file_name: str,
+    c_params: dict[str, Any],
+    l_params: dict[str, Any] | None=None,
+    hybrid: bool=False,
+    provider: str="ollama",
+    model: str="qwen3:4b",
+    used_api_key: str="",
+    base_url: str | None=None,
+    rag_context: str="",
+    cost_settings: dict[str, Any] | None=None,
+    api_key: str | None=None,
+) -> tuple[SequentialRunner, fc.CustomOrderLogger]:
+    """This function configures, runs, saves, and plots one simulation.
+
+    Params:
+        file_name: Simulation or data file name.
+        c_params: Classical simulation parameters.
+        l_params: LLM-agent parameters.
+        hybrid: Whether to run FCL agents.
+        provider: LLM provider name.
+        model: Model name or loaded model.
+        used_api_key: Provider API key.
+        base_url: Optional provider endpoint.
+        rag_context: Optional historical context.
+        cost_settings: Optional cost-estimation settings.
+        api_key: Provider API key.
+    """
     if api_key is not None:
         used_api_key = api_key
 
@@ -334,8 +390,14 @@ def sim_loop(
     return runner, logger
 
 
-def market_scenario_catalog(iter_steps=(200, 1000), llm_agents=5,classic_agents=400,):
-    """Return ready-to-run market scenarios for classical and hybrid simulations."""
+def market_scenario_catalog(iter_steps: tuple[int, int]=(200, 1000), llm_agents: int=5,classic_agents: int=400,) -> dict[str, dict[str, Any]]:
+    """This function returns predefined classical and hybrid market scenarios.
+
+    Params:
+        iter_steps: Warm-up and trading tick counts.
+        llm_agents: Number of FCL agents.
+        classic_agents: Total market-agent count.
+    """
     warmup_steps, trading_steps = iter_steps
 
     sp500_price = 7580.06
@@ -486,12 +548,8 @@ def market_scenario_catalog(iter_steps=(200, 1000), llm_agents=5,classic_agents=
     }
 
 
-def real_market_data_config_catalog():
-    """Default real-data sources used for backtest-style simulation setup.
-
-    S&P 500 backtests use manually downloaded CSV files by default. The loader
-    searches data/real_data, results/real_data, then data/real without web requests.
-    For Colombian coffee/FNC data, provide a local CSV with the same fields in the returned config.
+def real_market_data_config_catalog() -> dict[str, dict[str, Any]]:
+    """This function returns local real-data configurations for backtests.
     """
     local_search_dirs = ["data/real_data", "results/real_data", "data/real"]
     return {
@@ -570,8 +628,13 @@ def real_market_data_config_catalog():
     }
 
 
-def market_data_cache_path(real_data_config, cache_dir="data/real"):
-    """Return the expected local CSV path for a real-data config without downloading."""
+def market_data_cache_path(real_data_config: dict[str, Any] | None, cache_dir: str | os.PathLike[str]="data/real") -> Path | None:
+    """This function resolves the expected local path for market data.
+
+    Params:
+        real_data_config: Real-data loading configuration.
+        cache_dir: Local cache directory.
+    """
     config = dict(real_data_config or {})
     local_path = config.get("local_path")
     if local_path:
@@ -611,8 +674,13 @@ def market_data_cache_path(real_data_config, cache_dir="data/real"):
     return None
 
 
-def real_market_cache_status(real_data_config, cache_dir="data/real"):
-    """Check whether a backtest config can run without making a web request."""
+def real_market_cache_status(real_data_config: dict[str, Any] | None, cache_dir: str | os.PathLike[str]="data/real") -> pd.DataFrame:
+    """This function checks whether local market data is ready.
+
+    Params:
+        real_data_config: Real-data loading configuration.
+        cache_dir: Local cache directory.
+    """
     config = dict(real_data_config or {})
     expected_path = market_data_cache_path(config, cache_dir=cache_dir)
     status = {
@@ -651,7 +719,12 @@ def real_market_cache_status(real_data_config, cache_dir="data/real"):
     return pd.DataFrame([status])
 
 
-def _frame_bound(frame):
+def _frame_bound(frame: pd.DataFrame) -> tuple[Any | None, Any | None]:
+    """This function returns the first and last value of a frame.
+
+    Params:
+        frame: Input DataFrame.
+    """
     if frame is None or frame.empty:
         return None, None
     if "datetime" in frame.columns:
@@ -659,8 +732,13 @@ def _frame_bound(frame):
     return frame.index[0], frame.index[-1]
 
 
-def load_and_split_real_market_data(real_data_config, cache_dir="data/real"):
-    """Load real market data and split it into known history plus future holdout."""
+def load_and_split_real_market_data(real_data_config: dict[str, Any] | None, cache_dir: str | os.PathLike[str]="data/real") -> dict[str, Any]:
+    """This function loads real data and creates its validation split.
+
+    Params:
+        real_data_config: Real-data loading configuration.
+        cache_dir: Local cache directory.
+    """
     config = dict(real_data_config or {})
     local_path = config.get("local_path")
     symbol = config.get("symbol")
@@ -723,8 +801,13 @@ def load_and_split_real_market_data(real_data_config, cache_dir="data/real"):
     }
 
 
-def estimate_tick_real_time_mapping(iter_steps, future_real):
-    """Describe how simulation ticks map to the reserved real holdout window."""
+def estimate_tick_real_time_mapping(iter_steps: tuple[int, int], future_real: pd.DataFrame) -> dict[str, Any]:
+    """This function maps simulation ticks to real holdout observations.
+
+    Params:
+        iter_steps: Warm-up and trading tick counts.
+        future_real: Reserved future observations.
+    """
     warmup_ticks, trading_ticks = [int(x) for x in iter_steps]
     future_n = max(int(len(future_real)), 0)
     comparable_gaps = max(future_n - 1, 1)
@@ -740,14 +823,23 @@ def estimate_tick_real_time_mapping(iter_steps, future_real):
 
 
 def calibrate_market_params_from_known_data(
-    base_c_params,
-    known_real,
-    recent_window=30,
-    ticks_per_real_observation=None,
-    use_real_volatility=True,
-    use_real_tick_size=False,
-):
-    """Calibrate simulation starting price and fundamental from known real history."""
+    base_c_params: dict[str, Any],
+    known_real: pd.DataFrame,
+    recent_window: int=30,
+    ticks_per_real_observation: float | None=None,
+    use_real_volatility: bool=True,
+    use_real_tick_size: bool=False,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """This function calibrates market parameters from known history.
+
+    Params:
+        base_c_params: Base classical parameters.
+        known_real: Historical observations available for calibration.
+        recent_window: Recent rows used for calibration.
+        ticks_per_real_observation: Simulation ticks per real observation.
+        use_real_volatility: Whether to calibrate noise from real volatility.
+        use_real_tick_size: Whether to infer tick size from real prices.
+    """
     known = sa.prepare_price_frame(known_real, price_col="price")
     if known.empty:
         raise ValueError("known_real is empty; cannot calibrate c_params.")
@@ -787,18 +879,31 @@ def calibrate_market_params_from_known_data(
 
 
 def prepare_realistic_backtest_scenario(
-    scenario_key,
-    iter_steps=(200, 1000),
-    llm_agents=5,
-    classic_agents=400,
-    real_data_config=None,
-    file_suffix="_backtest",
-    calibrate_from_real_data=True,
-    recent_window=30,
-    use_real_volatility=True,
-    use_real_tick_size=False,
-):
-    """Prepare a scenario using only pre-cut real data, reserving future rows for validation."""
+    scenario_key: str,
+    iter_steps: tuple[int, int]=(200, 1000),
+    llm_agents: int=5,
+    classic_agents: int=400,
+    real_data_config: dict[str, Any] | None=None,
+    file_suffix: str="_backtest",
+    calibrate_from_real_data: bool=True,
+    recent_window: int=30,
+    use_real_volatility: bool=True,
+    use_real_tick_size: bool=False,
+) -> dict[str, Any]:
+    """This function prepares a leakage-free market backtest scenario.
+
+    Params:
+        scenario_key: Scenario catalog key.
+        iter_steps: Warm-up and trading tick counts.
+        llm_agents: Number of FCL agents.
+        classic_agents: Total market-agent count.
+        real_data_config: Real-data loading configuration.
+        file_suffix: Suffix added to generated scenario names.
+        calibrate_from_real_data: Whether known history calibrates the scenario.
+        recent_window: Recent rows used for calibration.
+        use_real_volatility: Whether to calibrate noise from real volatility.
+        use_real_tick_size: Whether to infer tick size from real prices.
+    """
     scenarios = market_scenario_catalog(iter_steps=iter_steps, llm_agents=llm_agents, classic_agents=classic_agents)
     if scenario_key not in scenarios:
         available = ", ".join(scenarios.keys())
@@ -855,17 +960,29 @@ def prepare_realistic_backtest_scenario(
 
 
 def run_prepared_market_scenario(
-    prepared_scenario,
-    hybrid=False,
-    provider="ollama",
-    model="qwen3.5:4b",
-    used_api_key="",
-    base_url=None,
-    rag_context=None,
-    cost_settings=None,
-    api_key=None,
-):
-    """Run a scenario returned by prepare_realistic_backtest_scenario."""
+    prepared_scenario: dict[str, Any],
+    hybrid: bool=False,
+    provider: str="ollama",
+    model: str="qwen3.5:4b",
+    used_api_key: str="",
+    base_url: str | None=None,
+    rag_context: str | None=None,
+    cost_settings: dict[str, Any] | None=None,
+    api_key: str | None=None,
+) -> tuple[SequentialRunner, fc.CustomOrderLogger]:
+    """This function runs a previously prepared backtest scenario.
+
+    Params:
+        prepared_scenario: Prepared backtest scenario bundle.
+        hybrid: Whether to run FCL agents.
+        provider: LLM provider name.
+        model: Model name or loaded model.
+        used_api_key: Provider API key.
+        base_url: Optional provider endpoint.
+        rag_context: Optional historical context.
+        cost_settings: Optional cost-estimation settings.
+        api_key: Provider API key.
+    """
     scenario = prepared_scenario["scenario"]
     file_name = scenario["hybrid_file"] if hybrid else scenario["classical_file"]
     return sim_loop(
@@ -883,8 +1000,13 @@ def run_prepared_market_scenario(
     )
 
 
-def simulated_trading_window(simulated_market_data, warmup_ticks=0):
-    """Return only the post-warmup simulated rows used for real holdout comparison."""
+def simulated_trading_window(simulated_market_data: Any, warmup_ticks: int=0) -> pd.DataFrame:
+    """This function returns simulated observations after warm-up.
+
+    Params:
+        simulated_market_data: Simulated market records.
+        warmup_ticks: Ticks removed as warm-up.
+    """
     df = pd.DataFrame(simulated_market_data).copy()
     if df.empty or "market_time" not in df.columns:
         return df
@@ -893,19 +1015,35 @@ def simulated_trading_window(simulated_market_data, warmup_ticks=0):
 
 
 def run_market_scenario(
-    scenario_key,
-    hybrid=False,
-    provider="ollama",
-    model="qwen3.5:4b",
-    used_api_key="",
-    iter_steps=(200, 1000),
-    llm_agents=5,
-    classic_agents=400,
-    base_url=None,
-    rag_context="",
-    cost_settings=None,
-    api_key=None,
-):
+    scenario_key: str,
+    hybrid: bool=False,
+    provider: str="ollama",
+    model: str="qwen3.5:4b",
+    used_api_key: str="",
+    iter_steps: tuple[int, int]=(200, 1000),
+    llm_agents: int=5,
+    classic_agents: int=400,
+    base_url: str | None=None,
+    rag_context: str="",
+    cost_settings: dict[str, Any] | None=None,
+    api_key: str | None=None,
+) -> tuple[SequentialRunner, fc.CustomOrderLogger]:
+    """This function runs one predefined market scenario.
+
+    Params:
+        scenario_key: Scenario catalog key.
+        hybrid: Whether to run FCL agents.
+        provider: LLM provider name.
+        model: Model name or loaded model.
+        used_api_key: Provider API key.
+        iter_steps: Warm-up and trading tick counts.
+        llm_agents: Number of FCL agents.
+        classic_agents: Total market-agent count.
+        base_url: Optional provider endpoint.
+        rag_context: Optional historical context.
+        cost_settings: Optional cost-estimation settings.
+        api_key: Provider API key.
+    """
     if api_key is not None:
         used_api_key = api_key
 
@@ -931,19 +1069,35 @@ def run_market_scenario(
 
 
 def run_market_scenarios(
-    scenario_keys,
-    hybrid=False,
-    provider="ollama",
-    model="qwen3.5:4b",
-    used_api_key="",
-    iter_steps=(200, 1000),
-    llm_agents=5,
-    classic_agents=400,
-    base_url=None,
-    rag_context="",
-    cost_settings=None,
-    api_key=None,
-):
+    scenario_keys: tuple[str, ...] | list[str],
+    hybrid: bool=False,
+    provider: str="ollama",
+    model: str="qwen3.5:4b",
+    used_api_key: str="",
+    iter_steps: tuple[int, int]=(200, 1000),
+    llm_agents: int=5,
+    classic_agents: int=400,
+    base_url: str | None=None,
+    rag_context: str="",
+    cost_settings: dict[str, Any] | None=None,
+    api_key: str | None=None,
+) -> dict[str, tuple[SequentialRunner, fc.CustomOrderLogger]]:
+    """This function runs several predefined market scenarios.
+
+    Params:
+        scenario_keys: Scenario catalog keys to run.
+        hybrid: Whether to run FCL agents.
+        provider: LLM provider name.
+        model: Model name or loaded model.
+        used_api_key: Provider API key.
+        iter_steps: Warm-up and trading tick counts.
+        llm_agents: Number of FCL agents.
+        classic_agents: Total market-agent count.
+        base_url: Optional provider endpoint.
+        rag_context: Optional historical context.
+        cost_settings: Optional cost-estimation settings.
+        api_key: Provider API key.
+    """
     if api_key is not None:
         used_api_key = api_key
 

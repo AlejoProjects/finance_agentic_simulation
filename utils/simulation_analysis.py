@@ -1,4 +1,6 @@
-from typing import Dict, Iterable, Optional, Tuple
+from __future__ import annotations
+
+from typing import Any, Dict, Iterable, Optional, Tuple
 from urllib.error import HTTPError, URLError
 from IPython.display import display
 from urllib.request import urlopen
@@ -20,7 +22,12 @@ except Exception:  # pragma: no cover - scipy is optional at import time
     stats = None
 
 
-def _as_dataframe(data) -> pd.DataFrame:
+def _as_dataframe(data: Any) -> pd.DataFrame:
+    """This function converts supported input data into a DataFrame.
+
+    Params:
+        data: Input records or DataFrame.
+    """
     if data is None:
         return pd.DataFrame()
     if isinstance(data, pd.DataFrame):
@@ -30,8 +37,13 @@ def _as_dataframe(data) -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
-def _read_market_csv_text(text: str, source_name="market data") -> pd.DataFrame:
-    """Read downloaded market data only when the response is a real CSV."""
+def _read_market_csv_text(text: str, source_name: str="market data") -> pd.DataFrame:
+    """This function validates and parses market CSV text.
+
+    Params:
+        text: Input text.
+        source_name: Source label used in errors.
+    """
     preview = text.strip()[:240].lower()
 
     if not text.strip():
@@ -59,18 +71,23 @@ def _read_market_csv_text(text: str, source_name="market data") -> pd.DataFrame:
 
 def fetch_stooq_daily(
     symbol: str,
-    start=None,
-    end=None,
-    cache_dir="data/real",
-    force_download=False,
-    api_key=None,
-    allow_download=True,
+    start: str | pd.Timestamp | None=None,
+    end: str | pd.Timestamp | None=None,
+    cache_dir: str | os.PathLike[str]="data/real",
+    force_download: bool=False,
+    api_key: str | None=None,
+    allow_download: bool=True,
 ) -> pd.DataFrame:
-    """Download daily market data from Stooq CSV and cache only valid CSV files.
+    """This function downloads or loads cached daily Stooq data.
 
-    Examples:
-        SPY.US for the S&P 500 ETF, ^SPX is not consistently available on Stooq.
-        baba.us for Alibaba ADR.
+    Params:
+        symbol: Market ticker symbol.
+        start: Optional start date.
+        end: Optional end date.
+        cache_dir: Local cache directory.
+        force_download: Whether to replace cached data.
+        api_key: Provider API key.
+        allow_download: Whether remote downloads are allowed.
     """
     cache_path = Path(cache_dir)
     cache_path.mkdir(parents=True, exist_ok=True)
@@ -124,13 +141,22 @@ def fetch_stooq_daily(
 
 def fetch_yahoo_daily(
     symbol: str,
-    start,
-    end,
-    cache_dir="data/real",
-    force_download=False,
-    allow_download=True,
+    start: str | pd.Timestamp | None,
+    end: str | pd.Timestamp | None,
+    cache_dir: str | os.PathLike[str]="data/real",
+    force_download: bool=False,
+    allow_download: bool=True,
 ) -> pd.DataFrame:
-    """Download daily market data from Yahoo Finance's CSV endpoint and cache it."""
+    """This function downloads or loads cached daily Yahoo data.
+
+    Params:
+        symbol: Market ticker symbol.
+        start: Optional start date.
+        end: Optional end date.
+        cache_dir: Local cache directory.
+        force_download: Whether to replace cached data.
+        allow_download: Whether remote downloads are allowed.
+    """
     cache_path = Path(cache_dir)
     cache_path.mkdir(parents=True, exist_ok=True)
     start_ts = int(pd.Timestamp(start).timestamp())
@@ -174,11 +200,17 @@ def fetch_yahoo_daily(
 
 
 def resolve_local_real_data_path(
-    file_name="sp500_index.csv",
-    local_path=None,
-    search_dirs=("data/real_data", "results/real_data", "data/real"),
+    file_name: str="sp500_index.csv",
+    local_path: str | os.PathLike[str] | None=None,
+    search_dirs: tuple[str, ...] | list[str]=("data/real_data", "results/real_data", "data/real"),
 ) -> Path:
-    """Resolve a manually downloaded real-data CSV without any web requests."""
+    """This function locates a manually downloaded market CSV.
+
+    Params:
+        file_name: Simulation or data file name.
+        local_path: Optional local CSV path.
+        search_dirs: Directories searched for local data.
+    """
     if local_path:
         path = Path(local_path)
         if path.exists():
@@ -200,13 +232,21 @@ def resolve_local_real_data_path(
 
 
 def load_local_real_data(
-    file_name="sp500_index.csv",
-    local_path=None,
-    search_dirs=("data/real_data", "results/real_data", "data/real"),
-    start=None,
-    end=None,
+    file_name: str="sp500_index.csv",
+    local_path: str | os.PathLike[str] | None=None,
+    search_dirs: tuple[str, ...] | list[str]=("data/real_data", "results/real_data", "data/real"),
+    start: str | pd.Timestamp | None=None,
+    end: str | pd.Timestamp | None=None,
 ) -> pd.DataFrame:
-    """Load manually downloaded market data from a local CSV and filter by date."""
+    """This function loads and filters a local market CSV.
+
+    Params:
+        file_name: Simulation or data file name.
+        local_path: Optional local CSV path.
+        search_dirs: Directories searched for local data.
+        start: Optional start date.
+        end: Optional end date.
+    """
     path = resolve_local_real_data_path(
         file_name=file_name,
         local_path=local_path,
@@ -225,17 +265,31 @@ def load_local_real_data(
 def load_or_fetch_real_data(
     symbol: Optional[str] = None,
     source: str = "local",
-    start=None,
-    end=None,
-    local_path=None,
-    file_name=None,
-    search_dirs=("data/real_data", "results/real_data", "data/real"),
-    cache_dir="data/real",
-    force_download=False,
-    api_key=None,
-    allow_download=True,
+    start: str | pd.Timestamp | None=None,
+    end: str | pd.Timestamp | None=None,
+    local_path: str | os.PathLike[str] | None=None,
+    file_name: str | None=None,
+    search_dirs: tuple[str, ...] | list[str]=("data/real_data", "results/real_data", "data/real"),
+    cache_dir: str | os.PathLike[str]="data/real",
+    force_download: bool=False,
+    api_key: str | None=None,
+    allow_download: bool=True,
 ) -> pd.DataFrame:
-    """Load a local CSV or fetch real data for simulation comparison."""
+    """This function loads market data from a local or remote source.
+
+    Params:
+        symbol: Market ticker symbol.
+        source: Market-data source.
+        start: Optional start date.
+        end: Optional end date.
+        local_path: Optional local CSV path.
+        file_name: Simulation or data file name.
+        search_dirs: Directories searched for local data.
+        cache_dir: Local cache directory.
+        force_download: Whether to replace cached data.
+        api_key: Provider API key.
+        allow_download: Whether remote downloads are allowed.
+    """
     source = (source or "").lower()
     if source == "local" or local_path:
         return load_local_real_data(
@@ -274,6 +328,12 @@ def load_or_fetch_real_data(
 
 
 def _first_existing(columns: Iterable[str], candidates: Iterable[str]) -> Optional[str]:
+    """This function returns the first candidate present in a column set.
+
+    Params:
+        columns: Available column names.
+        candidates: Candidate column names.
+    """
     columns = set(columns)
     for candidate in candidates:
         if candidate in columns:
@@ -282,6 +342,12 @@ def _first_existing(columns: Iterable[str], candidates: Iterable[str]) -> Option
 
 
 def resolve_price_col(df: pd.DataFrame, price_col: Optional[str] = None) -> str:
+    """This function identifies the price column in a market DataFrame.
+
+    Params:
+        df: Input DataFrame.
+        price_col: Price column name.
+    """
     if price_col and price_col in df.columns:
         return price_col
     candidate = _first_existing(
@@ -308,7 +374,14 @@ def resolve_price_col(df: pd.DataFrame, price_col: Optional[str] = None) -> str:
     return numeric_cols[0]
 
 
-def prepare_price_frame(data, date_col: Optional[str] = None, price_col: Optional[str] = None) -> pd.DataFrame:
+def prepare_price_frame(data: Any, date_col: Optional[str] = None, price_col: Optional[str] = None) -> pd.DataFrame:
+    """This function standardizes dates and prices for analysis.
+
+    Params:
+        data: Input records or DataFrame.
+        date_col: Date column name.
+        price_col: Price column name.
+    """
     df = _as_dataframe(data)
     if df.empty:
         return df
@@ -338,13 +411,21 @@ def prepare_price_frame(data, date_col: Optional[str] = None, price_col: Optiona
 
 
 def split_real_data_for_backtest(
-    real_data,
-    current_agent_knowledge=None,
+    real_data: Any,
+    current_agent_knowledge: str | pd.Timestamp | None=None,
     holdout_steps: Optional[int] = None,
     date_col: Optional[str] = None,
     price_col: Optional[str] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Split real data into known history and future holdout for validation."""
+    """This function creates known-history and future-holdout datasets.
+
+    Params:
+        real_data: Observed market data.
+        current_agent_knowledge: Latest date known by the agent.
+        holdout_steps: Reserved future observations.
+        date_col: Date column name.
+        price_col: Price column name.
+    """
     df = prepare_price_frame(real_data, date_col=date_col, price_col=price_col)
     if df.empty:
         return df.copy(), df.copy()
@@ -368,18 +449,22 @@ def split_real_data_for_backtest(
 
 
 def add_tick_time_index(
-    simulated_data,
-    start_datetime,
-    end_datetime=None,
+    simulated_data: Any,
+    start_datetime: str | pd.Timestamp,
+    end_datetime: str | pd.Timestamp | None=None,
     ticks_per_day: Optional[float] = None,
     trading_minutes_per_day: float = 390.0,
     tick_col: str = "market_time",
 ) -> pd.DataFrame:
-    """Map simulation ticks to a comparable clock.
+    """This function maps artificial ticks to comparable timestamps.
 
-    If end_datetime is supplied, ticks are linearly stretched over that real interval.
-    Otherwise ticks_per_day converts ticks into trading days, using trading minutes for
-    an intraday timestamp approximation.
+    Params:
+        simulated_data: Simulated market data.
+        start_datetime: Start timestamp for tick mapping.
+        end_datetime: End timestamp for tick mapping.
+        ticks_per_day: Artificial ticks assigned to one day.
+        trading_minutes_per_day: Trading minutes represented per day.
+        tick_col: Simulation tick column name.
     """
     df = prepare_price_frame(simulated_data, price_col="market_price")
     if df.empty:
@@ -410,13 +495,21 @@ def add_tick_time_index(
 
 
 def align_simulation_to_real_holdout(
-    real_future,
-    simulated_data,
+    real_future: pd.DataFrame,
+    simulated_data: Any,
     real_price_col: Optional[str] = None,
     sim_price_col: Optional[str] = "market_price",
     scale_sim_to_real_start: bool = True,
 ) -> pd.DataFrame:
-    """Interpolate simulated prices to the same number of observations as real holdout."""
+    """This function aligns simulated prices with real holdout observations.
+
+    Params:
+        real_future: Reserved real holdout data.
+        simulated_data: Simulated market data.
+        real_price_col: Real-data price column.
+        sim_price_col: Simulation price column.
+        scale_sim_to_real_start: Whether to align initial price levels.
+    """
     real = prepare_price_frame(real_future, price_col=real_price_col)
     sim = prepare_price_frame(simulated_data, price_col=sim_price_col)
     if real.empty or sim.empty:
@@ -441,7 +534,13 @@ def align_simulation_to_real_holdout(
     return aligned
 
 
-def _safe_corr(left, right) -> float:
+def _safe_corr(left: Any, right: Any) -> float:
+    """This function calculates correlation when enough valid data exists.
+
+    Params:
+        left: First numeric series.
+        right: Second numeric series.
+    """
     left = pd.Series(left).astype(float)
     right = pd.Series(right).astype(float)
     valid = left.notna() & right.notna()
@@ -453,6 +552,11 @@ def _safe_corr(left, right) -> float:
 
 
 def _scientific_error_metrics(aligned_df: pd.DataFrame) -> Dict[str, float]:
+    """This function calculates scientific errors for aligned price series.
+
+    Params:
+        aligned_df: Aligned real and simulated observations.
+    """
     real = aligned_df["real_price"].astype(float)
     sim = aligned_df["sim_price"].astype(float)
     errors = sim - real
@@ -499,6 +603,11 @@ def _scientific_error_metrics(aligned_df: pd.DataFrame) -> Dict[str, float]:
 
 
 def comparison_metrics(aligned_df: pd.DataFrame) -> Dict[str, float]:
+    """This function summarizes real-versus-simulated comparison metrics.
+
+    Params:
+        aligned_df: Aligned real and simulated observations.
+    """
     if aligned_df.empty:
         return {}
 
@@ -527,15 +636,27 @@ def comparison_metrics(aligned_df: pd.DataFrame) -> Dict[str, float]:
 
 
 def compare_real_vs_simulated(
-    real_data,
-    simulated_data,
-    current_agent_knowledge=None,
+    real_data: Any,
+    simulated_data: Any,
+    current_agent_knowledge: str | pd.Timestamp | None=None,
     holdout_steps: Optional[int] = None,
     real_price_col: Optional[str] = None,
     sim_price_col: Optional[str] = "market_price",
     date_col: Optional[str] = None,
     scale_sim_to_real_start: bool = True,
-):
+) -> dict[str, Any]:
+    """This function aligns and compares a simulation with future real data.
+
+    Params:
+        real_data: Observed market data.
+        simulated_data: Simulated market data.
+        current_agent_knowledge: Latest date known by the agent.
+        holdout_steps: Reserved future observations.
+        real_price_col: Real-data price column.
+        sim_price_col: Simulation price column.
+        date_col: Date column name.
+        scale_sim_to_real_start: Whether to align initial price levels.
+    """
     known, future = split_real_data_for_backtest(
         real_data,
         current_agent_knowledge=current_agent_knowledge,
@@ -558,7 +679,13 @@ def compare_real_vs_simulated(
     }
 
 
-def compute_all_time_high_nearness(data, price_col: Optional[str] = None) -> pd.DataFrame:
+def compute_all_time_high_nearness(data: Any, price_col: Optional[str] = None) -> pd.DataFrame:
+    """This function calculates price proximity to the running maximum.
+
+    Params:
+        data: Input records or DataFrame.
+        price_col: Price column name.
+    """
     df = prepare_price_frame(data, price_col=price_col)
     if df.empty:
         return df
@@ -568,7 +695,15 @@ def compute_all_time_high_nearness(data, price_col: Optional[str] = None) -> pd.
     return df
 
 
-def _resolved_horizon_shift(horizon, rows_per_day, n_obs, auto_rescale=True):
+def _resolved_horizon_shift(horizon: int, rows_per_day: int, n_obs: int, auto_rescale: bool=True) -> tuple[int, int, str]:
+    """This function converts a horizon into a valid row shift.
+
+    Params:
+        horizon: Forecast horizon.
+        rows_per_day: Rows representing one real day.
+        n_obs: Number of available observations.
+        auto_rescale: Whether to reduce oversized horizons.
+    """
     requested_shift_rows = max(1, int(round(horizon * rows_per_day)))
     if requested_shift_rows < max(n_obs - 2, 1):
         return requested_shift_rows, requested_shift_rows, "days"
@@ -580,7 +715,14 @@ def _resolved_horizon_shift(horizon, rows_per_day, n_obs, auto_rescale=True):
     return fallback_shift, requested_shift_rows, "rows_fallback"
 
 
-def detect_historic_maxima(data, price_col: Optional[str] = None, strict_new_high: bool = True) -> Dict[str, object]:
+def detect_historic_maxima(data: Any, price_col: Optional[str] = None, strict_new_high: bool = True) -> Dict[str, object]:
+    """This function identifies simulated historical price maxima.
+
+    Params:
+        data: Input records or DataFrame.
+        price_col: Price column name.
+        strict_new_high: Whether only new records count as maxima.
+    """
     df = compute_all_time_high_nearness(data, price_col=price_col)
     if df.empty:
         return {"has_data": False, "maxima": pd.DataFrame()}
@@ -604,13 +746,21 @@ def detect_historic_maxima(data, price_col: Optional[str] = None, strict_new_hig
 
 
 def ols_all_time_high_beta(
-    data,
-    horizons=(10, 15, 30),
+    data: Any,
+    horizons: tuple[int, ...] | list[int]=(10, 15, 30),
     rows_per_day: float = 1.0,
     price_col: Optional[str] = None,
     auto_rescale: bool = True,
 ) -> pd.DataFrame:
-    """Estimate beta_h in p_{t+T}/p_t = const + beta_h * p_t / p^h_{1:t}."""
+    """This function estimates the all-time-high regression coefficient by horizon.
+
+    Params:
+        data: Input records or DataFrame.
+        horizons: Horizons evaluated by the regression.
+        rows_per_day: Rows representing one real day.
+        price_col: Price column name.
+        auto_rescale: Whether to reduce oversized horizons.
+    """
     df = compute_all_time_high_nearness(data, price_col=price_col)
     df = df.dropna(subset=["price", "all_time_high_nearness"]).reset_index(drop=True)
     rows = []
@@ -704,11 +854,19 @@ def ols_all_time_high_beta(
 
 
 def stylized_facts(
-    data,
+    data: Any,
     price_col: Optional[str] = None,
     volume_col: Optional[str] = None,
-    lags=(1, 5, 10),
+    lags: tuple[int, ...] | list[int]=(1, 5, 10),
 ) -> Dict[str, float]:
+    """This function calculates core financial-market stylized facts.
+
+    Params:
+        data: Input records or DataFrame.
+        price_col: Price column name.
+        volume_col: Volume column name.
+        lags: Autocorrelation lags.
+    """
     df = prepare_price_frame(data, price_col=price_col)
     if df.empty:
         return {}
@@ -733,10 +891,17 @@ def stylized_facts(
 
 
 def orders_with_all_time_high_nearness(
-    orders_data,
-    market_data,
+    orders_data: Any,
+    market_data: Any,
     agent_type: Optional[str] = "auto",
 ) -> pd.DataFrame:
+    """This function attaches all-time-high proximity to submitted orders.
+
+    Params:
+        orders_data: Submitted order records.
+        market_data: Simulated market records.
+        agent_type: Agent class filter.
+    """
     orders = _as_dataframe(orders_data)
     market = compute_all_time_high_nearness(market_data, price_col="market_price")
     if orders.empty or market.empty:
@@ -782,7 +947,13 @@ def orders_with_all_time_high_nearness(
     return merged
 
 
-def asset_proportion_summary(portfolio_data, agent_type: Optional[str] = "FCLAgent") -> Dict[str, float]:
+def asset_proportion_summary(portfolio_data: Any, agent_type: Optional[str] = "FCLAgent") -> Dict[str, float]:
+    """This function summarizes risky-asset allocation across portfolios.
+
+    Params:
+        portfolio_data: Agent portfolio records.
+        agent_type: Agent class filter.
+    """
     df = _as_dataframe(portfolio_data)
     if df.empty:
         return {}
@@ -802,6 +973,11 @@ def asset_proportion_summary(portfolio_data, agent_type: Optional[str] = "FCLAge
 
 
 def order_nearness_tests(order_nearness_df: pd.DataFrame) -> Dict[str, float]:
+    """This function compares buy and sell proximity distributions.
+
+    Params:
+        order_nearness_df: Orders with ATH proximity values.
+    """
     if order_nearness_df.empty:
         return {}
     df = order_nearness_df.copy()
@@ -825,7 +1001,13 @@ def order_nearness_tests(order_nearness_df: pd.DataFrame) -> Dict[str, float]:
     return out
 
 
-def plot_real_vs_simulated(aligned_df: pd.DataFrame, title="Real vs simulated prices"):
+def plot_real_vs_simulated(aligned_df: pd.DataFrame, title: str="Real vs simulated prices") -> tuple[Any, Any]:
+    """This function plots aligned real and simulated prices.
+
+    Params:
+        aligned_df: Aligned real and simulated observations.
+        title: Plot title.
+    """
     if plt is None:
         raise ImportError("matplotlib is required for plotting.")
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -840,7 +1022,13 @@ def plot_real_vs_simulated(aligned_df: pd.DataFrame, title="Real vs simulated pr
     return fig, ax
 
 
-def plot_simulated_historic_maximum(simulated_data, price_col: Optional[str] = "market_price"):
+def plot_simulated_historic_maximum(simulated_data: Any, price_col: Optional[str] = "market_price") -> tuple[Any, Any, dict[str, Any]]:
+    """This function plots the simulated path and its maximum.
+
+    Params:
+        simulated_data: Simulated market data.
+        price_col: Price column name.
+    """
     if plt is None:
         raise ImportError("matplotlib is required for plotting.")
     report = detect_historic_maxima(simulated_data, price_col=price_col)
@@ -860,7 +1048,14 @@ def plot_simulated_historic_maximum(simulated_data, price_col: Optional[str] = "
     return fig, ax, report
 
 
-def plot_asset_proportion_histogram(portfolio_data, agent_type: Optional[str] = "FCLAgent", bins=60):
+def plot_asset_proportion_histogram(portfolio_data: Any, agent_type: Optional[str] = "FCLAgent", bins: int=60) -> tuple[Any, Any, dict[str, float]]:
+    """This function plots the distribution of portfolio asset proportions.
+
+    Params:
+        portfolio_data: Agent portfolio records.
+        agent_type: Agent class filter.
+        bins: Histogram bin count.
+    """
     if plt is None:
         raise ImportError("matplotlib is required for plotting.")
     df = _as_dataframe(portfolio_data)
@@ -881,7 +1076,13 @@ def plot_asset_proportion_histogram(portfolio_data, agent_type: Optional[str] = 
     return fig, ax, summary
 
 
-def plot_all_time_high_nearness_histogram(order_nearness_df: pd.DataFrame, bins=50):
+def plot_all_time_high_nearness_histogram(order_nearness_df: pd.DataFrame, bins: int=50) -> tuple[Any, Any, dict[str, float]]:
+    """This function plots buy and sell proximity to the all-time high.
+
+    Params:
+        order_nearness_df: Orders with ATH proximity values.
+        bins: Histogram bin count.
+    """
     if plt is None:
         raise ImportError("matplotlib is required for plotting.")
     df = order_nearness_df.copy()
@@ -908,21 +1109,37 @@ def plot_all_time_high_nearness_histogram(order_nearness_df: pd.DataFrame, bins=
 
 
 def reference_paper_report(
-    simulated_market_data,
-    real_data=None,
-    comparison_simulated_market_data=None,
-    orders_data=None,
-    portfolio_data=None,
-    executions_data=None,
-    current_agent_knowledge=None,
+    simulated_market_data: Any,
+    real_data: Any=None,
+    comparison_simulated_market_data: Any | None=None,
+    orders_data: Any=None,
+    portfolio_data: Any=None,
+    executions_data: Any | None=None,
+    current_agent_knowledge: str | pd.Timestamp | None=None,
     holdout_steps: Optional[int] = None,
     rows_per_day: float = 1.0,
     real_price_col: Optional[str] = None,
     real_date_col: Optional[str] = None,
     sim_price_col: Optional[str] = "market_price",
     volume_col: Optional[str] = None,
-):
-    """Compute the paper-style result bundle for one simulation trial."""
+) -> dict[str, Any]:
+    """This function builds the paper-style metrics for one simulation.
+
+    Params:
+        simulated_market_data: Simulated market records.
+        real_data: Observed market data.
+        comparison_simulated_market_data: Simulation window used for real-data comparison.
+        orders_data: Submitted order records.
+        portfolio_data: Agent portfolio records.
+        executions_data: Executed trade records.
+        current_agent_knowledge: Latest date known by the agent.
+        holdout_steps: Reserved future observations.
+        rows_per_day: Rows representing one real day.
+        real_price_col: Real-data price column.
+        real_date_col: Real-data date column.
+        sim_price_col: Simulation price column.
+        volume_col: Volume column name.
+    """
     report = {
         "sim_historic_maximum": detect_historic_maxima(simulated_market_data, price_col=sim_price_col),
         "sim_beta_h": ols_all_time_high_beta(simulated_market_data, rows_per_day=rows_per_day, price_col=sim_price_col),
@@ -980,8 +1197,12 @@ def reference_paper_report(
     return report
 
 
-def list_market_simulations(result_root="results") -> pd.DataFrame:
-    """List saved simulation result sets available for analysis."""
+def list_market_simulations(result_root: str | os.PathLike[str]="results") -> pd.DataFrame:
+    """This function lists saved simulations available for analysis.
+
+    Params:
+        result_root: Root directory containing results.
+    """
     result_root = Path(result_root)
     rows = []
     for sim_type in ["classic", "llms"]:
@@ -1001,8 +1222,14 @@ def list_market_simulations(result_root="results") -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def load_simulation_artifacts(sim_type, file_name, result_root="results") -> Dict[str, object]:
-    """Load market, order, execution, and portfolio CSV artifacts for one run."""
+def load_simulation_artifacts(sim_type: str, file_name: str, result_root: str | os.PathLike[str]="results") -> Dict[str, object]:
+    """This function loads all CSV artifacts for one simulation.
+
+    Params:
+        sim_type: Simulation type: classic or llms.
+        file_name: Simulation or data file name.
+        result_root: Root directory containing results.
+    """
     base_dir = Path(result_root) / sim_type
     paths = {
         "market": base_dir / f"{file_name}_base_results_fcn.csv",
@@ -1024,8 +1251,13 @@ def load_simulation_artifacts(sim_type, file_name, result_root="results") -> Dic
     }
 
 
-def simulated_trading_window(simulated_market_data, warmup_ticks=0):
-    """Return only post-warmup simulated rows for real-holdout comparison."""
+def simulated_trading_window(simulated_market_data: Any, warmup_ticks: int=0) -> pd.DataFrame:
+    """This function returns simulated observations after warm-up.
+
+    Params:
+        simulated_market_data: Simulated market records.
+        warmup_ticks: Ticks removed as warm-up.
+    """
     df = _as_dataframe(simulated_market_data)
     if df.empty or "market_time" not in df.columns:
         return df
@@ -1034,27 +1266,38 @@ def simulated_trading_window(simulated_market_data, warmup_ticks=0):
 
 
 def analyze_simulation(
-    sim_type,
-    file_name,
-    rows_per_day=1,
-    real_data=None,
-    real_data_path=None,
-    current_agent_knowledge=None,
-    holdout_steps=None,
-    real_price_col=None,
-    real_date_col=None,
-    sim_price_col="market_price",
-    comparison_market_data=None,
-    comparison_warmup_steps=None,
-    result_root="results",
-    print_summary=True,
-):
-    """Load one saved simulation and compute the full paper-style analysis bundle.
+    sim_type: str,
+    file_name: str,
+    rows_per_day: int=1,
+    real_data: Any=None,
+    real_data_path: str | os.PathLike[str] | None=None,
+    current_agent_knowledge: str | pd.Timestamp | None=None,
+    holdout_steps: int | None=None,
+    real_price_col: str | None=None,
+    real_date_col: str | None=None,
+    sim_price_col: str | None="market_price",
+    comparison_market_data: Any | None=None,
+    comparison_warmup_steps: int | None=None,
+    result_root: str | os.PathLike[str]="results",
+    print_summary: bool=True,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """This function loads and analyzes one classical or hybrid simulation.
 
-    This is the utility version of the notebook helper. Use it for classical or
-    hybrid simulations. If real_data is supplied, the function splits it into
-    known history and future holdout, then compares the holdout with the
-    post-warmup simulated path when comparison_warmup_steps is provided.
+    Params:
+        sim_type: Simulation type: classic or llms.
+        file_name: Simulation or data file name.
+        rows_per_day: Rows representing one real day.
+        real_data: Observed market data.
+        real_data_path: Optional real-data CSV path.
+        current_agent_knowledge: Latest date known by the agent.
+        holdout_steps: Reserved future observations.
+        real_price_col: Real-data price column.
+        real_date_col: Real-data date column.
+        sim_price_col: Simulation price column.
+        comparison_market_data: Optional post-warm-up market data.
+        comparison_warmup_steps: Warm-up ticks removed before comparison.
+        result_root: Root directory containing results.
+        print_summary: Whether to print row counts.
     """
     artifacts = load_simulation_artifacts(sim_type, file_name, result_root=result_root)
     if real_data is None and real_data_path:
@@ -1091,16 +1334,24 @@ def analyze_simulation(
             print(f"Comparison market rows after warmup trim: {len(comparison_market_data)}")
 
     return report, artifacts
-def _safe_get(dct, key, default=np.nan):
-    '''
-    Safely get a value from a dictionary, returning a default if the key is missing or if the input is not a dictionary.
-    '''
+def _safe_get(dct: dict[str, Any] | None, key: str, default: Any=np.nan) -> Any:
+    """This function reads a dictionary value with a safe default.
+
+    Params:
+        dct: Source dictionary.
+        key: Dictionary key.
+        default: Fallback value.
+    """
     return dct.get(key, default) if isinstance(dct, dict) else default
 
 #This functions measures the mean squared error between the simulated and real beta_h values across horizons, handling various edge cases gracefully.
 #Used for the llm paper's comparison of simulated vs real beta_h estimates.
-def _beta_h_mse(report):
-    '''Calculate the mean squared error between simulated and real beta_h values across horizons.'''
+def _beta_h_mse(report: dict[str, Any]) -> float:
+    """This function calculates error between real and simulated ATH coefficients.
+
+    Params:
+        report: Simulation analysis report.
+    """
     sim_beta = report.get("sim_beta_h")
     real_beta = report.get("real_beta_h")
 
@@ -1124,8 +1375,14 @@ def _beta_h_mse(report):
     return float(np.mean((merged["beta_h_sim"] - merged["beta_h_real"]) ** 2))
 
 
-def _return_distribution_distances(aligned_df, bins=40, eps=1e-12):
-    '''Calculate KL divergence and Hellinger distance between real and simulated return distributions.'''
+def _return_distribution_distances(aligned_df: pd.DataFrame, bins: int=40, eps: float=1e-12) -> dict[str, float]:
+    """This function compares real and simulated return distributions.
+
+    Params:
+        aligned_df: Aligned real and simulated observations.
+        bins: Histogram bin count.
+        eps: Small probability stabilizer.
+    """
     if aligned_df is None or aligned_df.empty:
         return {"kl_divergence": np.nan, "hellinger_distance": np.nan}
 
@@ -1163,10 +1420,13 @@ def _return_distribution_distances(aligned_df, bins=40, eps=1e-12):
     }
 
 
-def _llm_order_flow_metrics(artifacts, report):
-    '''
-Calculate LLM order flow metrics, order nearness test results, portfolio asset proportion summary, and ODEAN proxy PGR-PLR from the provided artifacts and report.
-    '''
+def _llm_order_flow_metrics(artifacts: dict[str, Any], report: dict[str, Any]) -> dict[str, float]:
+    """This function calculates LLM order-flow and portfolio metrics.
+
+    Params:
+        artifacts: Loaded simulation artifacts.
+        report: Simulation analysis report.
+    """
     orders = artifacts.get("orders")
     executions = artifacts.get("executions")
     market = artifacts.get("market")
@@ -1256,7 +1516,15 @@ Calculate LLM order flow metrics, order nearness test results, portfolio asset p
                     metrics["odean_proxy_pgr_minus_plr"] = float(pgr - plr)
 
     return metrics
-def macro_table(sim_facts, sim_facts_with_volume, historic_max, paper_report):
+def macro_table(sim_facts: dict[str, Any], sim_facts_with_volume: dict[str, Any], historic_max: dict[str, Any], paper_report: dict[str, Any]) -> pd.DataFrame:
+    """This function formats macro-level validation metrics as a table.
+
+    Params:
+        sim_facts: Simulation stylized facts.
+        sim_facts_with_volume: Stylized facts using execution volume.
+        historic_max: Historical-maximum summary.
+        paper_report: Paper-style simulation report.
+    """
     macro_market_validation = pd.DataFrame([
         {
             "metric": "fat_tails_excess_kurtosis",
@@ -1305,7 +1573,12 @@ def macro_table(sim_facts, sim_facts_with_volume, historic_max, paper_report):
         },
     ])
     return macro_market_validation
-def micro_table(micro_metrics):
+def micro_table(micro_metrics: dict[str, Any]) -> pd.DataFrame:
+    """This function formats agent-level validation metrics as a table.
+
+    Params:
+        micro_metrics: Agent-level validation metrics.
+    """
     micro_llm_validation = pd.DataFrame([
         {
             "metric": "llm_orders",
@@ -1354,7 +1627,13 @@ def micro_table(micro_metrics):
         },
     ])
     return micro_llm_validation
-def validation_table_func(validation_metrics, distance_metrics):
+def validation_table_func(validation_metrics: dict[str, Any], distance_metrics: dict[str, float]) -> pd.DataFrame:
+    """This function formats trajectory validation metrics as a table.
+
+    Params:
+        validation_metrics: Trajectory validation metrics.
+        distance_metrics: Distribution-distance metrics.
+    """
     real_vs_simulated_validation = pd.DataFrame([
         {
             "metric": "rmse",
@@ -1408,7 +1687,9 @@ def validation_table_func(validation_metrics, distance_metrics):
         },
     ])
     return real_vs_simulated_validation
-def architecture_table():
+def architecture_table() -> pd.DataFrame:
+    """This function describes the simulation validation architecture.
+    """
     architecture_safeguard = pd.DataFrame([
         {
             "component": "LLM/FCL agent",
@@ -1424,8 +1705,14 @@ def architecture_table():
         },
     ])
     return architecture_safeguard
-def full_metric(paper_report,artifacts):
+def full_metric(paper_report: dict[str, Any],artifacts: dict[str, Any]) -> dict[str, pd.DataFrame]:
    
+    """This function generates plots and validation tables for a report.
+
+    Params:
+        paper_report: Paper-style simulation report.
+        artifacts: Loaded simulation artifacts.
+    """
     plot_simulated_historic_maximum(
    artifacts["market"],
     price_col="market_price"
