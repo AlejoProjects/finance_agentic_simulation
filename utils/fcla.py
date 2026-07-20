@@ -108,6 +108,7 @@ class FCLAgent(FCNAgent):
     _personalities: Dict[str, Any] = {}
     _personality_distribution: Optional[Dict[str, int]] = None
     _agent_counter: int = 0
+    _decision_logs: List[Dict[str, Any]] = []
 
     _api_provider: str = "ollama"
     _api_model: str = "qwen3:4b"
@@ -131,6 +132,7 @@ class FCLAgent(FCNAgent):
         cls._personalities = personalities
         cls._personality_distribution = distribution
         cls._agent_counter = 0
+        cls._decision_logs = []
 
     @classmethod
     def configure_api(
@@ -379,5 +381,21 @@ class FCLAgent(FCNAgent):
                     final_orders.append(order)
                 elif llm_intent == "SELL" and not order.is_buy:
                     final_orders.append(order)
+
+        FCLAgent._decision_logs.append({
+            "market_time": current_time,
+            "market_id": market.market_id,
+            "agent_id": self.agent_id,
+            "agent_type": self.__class__.__name__,
+            "personality_name": self.personality_name,
+            "current_price": current_price,
+            "all_time_high": all_time_high,
+            "all_time_low": all_time_low,
+            "high_nearness": high_nearness,
+            "low_nearness": low_nearness,
+            "llm_intent": llm_intent,
+            "candidate_orders": len(algorithmic_orders),
+            "submitted_orders": len(final_orders),
+        })
 
         return final_orders

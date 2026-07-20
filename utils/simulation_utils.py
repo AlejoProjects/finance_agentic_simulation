@@ -97,6 +97,12 @@ def agentic_parameters(c_params: dict[str, Any], l_params: dict[str, Any], file_
         file_name: Simulation or data file name.
     """
     algo_agents = c_params["total_agents"] - l_params["total_agents"]
+    if algo_agents < 0:
+        raise ValueError(
+            "Invalid hybrid configuration: c_params['total_agents'] must be greater than "
+            "or equal to l_params['total_agents']. The FCN group cannot have a negative "
+            f"agent count ({c_params['total_agents']} - {l_params['total_agents']} = {algo_agents})."
+        )
     
     agentic_json = {
         "simulation": {
@@ -195,6 +201,7 @@ def run_sim(
         fc.FCLAgent.configure_personalities(pr.diccionario_personalidades, distribution=pr.distribucion_definida)
         fc.FCLAgent.configure_api(provider=u_provider, model=u_model, api_key=api_key, base_url=base_url)
         fc.FCLAgent.configure_rag_context(rag_context)
+        fc.FCLAgent._decision_logs = []
         print("Inicializando entorno híbrido...")
     else:
         fc.FCLAgent.configure_rag_context("")
@@ -241,6 +248,12 @@ def run_sim(
         portfolios_path = f"{res_dir}/{name}_agent_portfolios.csv"
         df_portfolios.to_csv(portfolios_path, index=False)
         print(f"Agent portfolios saved on '{portfolios_path}'")
+
+    df_decisions = pd.DataFrame(fc.FCLAgent._decision_logs)
+    if hybrid and not df_decisions.empty:
+        decisions_path = f"{res_dir}/{name}_llm_decisions.csv"
+        df_decisions.to_csv(decisions_path, index=False)
+        print(f"LLM decisions saved on '{decisions_path}'")
     
     return runner, logger
 def statistical_info(df: pd.DataFrame) -> None:

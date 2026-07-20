@@ -890,6 +890,101 @@ def stylized_facts(
     return out
 
 
+def kurtosis_diagnostic(
+    data: Any,
+    price_col: Optional[str] = None,
+    artifact_warning_threshold: float=20.0,
+) -> dict[str, Any]:
+    """This function classifies return-tail evidence and artifact risk.
+
+    Params:
+        data: Input records or DataFrame.
+        price_col: Price column name.
+        artifact_warning_threshold: Excess-kurtosis value that flags artifact risk.
+    """
+    df = prepare_price_frame(data, price_col=price_col)
+    returns = df["log_return"].replace([np.inf, -np.inf], np.nan).dropna() if not df.empty else pd.Series(dtype=float)
+    excess_kurtosis = float(returns.kurtosis()) if len(returns) > 3 else np.nan
+
+    if not np.isfinite(excess_kurtosis):
+        label = "insufficient_data"
+        interpretation = "Not enough valid returns to evaluate tail behavior."
+    elif excess_kurtosis <= 0:
+        label = "no_fat_tail_signal"
+        interpretation = "Returns are not more leptokurtic than a Gaussian benchmark."
+    elif excess_kurtosis < 3:
+        label = "moderate_fat_tail_signal"
+        interpretation = "Returns show mild fat tails, compatible with market stylized facts."
+    elif excess_kurtosis < artifact_warning_threshold:
+        label = "strong_fat_tail_signal"
+        interpretation = "Returns show strong fat tails, compatible with market stylized facts."
+    else:
+        label = "extreme_tail_artifact_risk"
+        interpretation = (
+            "Returns have very high excess kurtosis; this supports fat tails but also requires "
+            "checking liquidity gaps, flat paths, outliers, and single-run artifacts."
+        )
+
+    return {
+        "n_returns": int(len(returns)),
+        "excess_kurtosis": excess_kurtosis,
+        "classification": label,
+        "interpretation": interpretation,
+    }
+
+
+def ljung_box_abs_return_test(
+    data: Any,
+    lags: tuple[int, ...] | list[int]=(1, 5, 10),
+    price_col: Optional[str] = None,
+) -> pd.DataFrame:
+    """This function tests volatility clustering through absolute returns.
+
+    Params:
+        data: Input records or DataFrame.
+        lags: Ljung-Box horizons.
+        price_col: Price column name.
+    """
+    df = prepare_price_frame(data, price_col=price_col)
+    abs_returns = df["log_return"].replace([np.inf, -np.inf], np.nan).dropna().abs() if not df.empty else pd.Series(dtype=float)
+    n = len(abs_returns)
+    rows = []
+
+    for lag in lags:
+        lag = int(lag)
+        if n <= lag + 1:
+            rows.append({
+                "lag": lag,
+                "n": n,
+                "q_stat": np.nan,
+                "p_value": np.nan,
+                "classification": "insufficient_data",
+            })
+            continue
+
+        autocorrs = []
+        for k in range(1, lag + 1):
+            autocorr = abs_returns.autocorr(lag=k)
+            autocorrs.append(0.0 if pd.isna(autocorr) else float(autocorr))
+
+        q_stat = n * (n + 2) * sum((rho ** 2) / max(n - k, 1) for k, rho in enumerate(autocorrs, start=1))
+        p_value = float(stats.chi2.sf(q_stat, df=lag)) if stats is not None else np.nan
+        if np.isfinite(p_value):
+            classification = "significant_volatility_clustering" if p_value < 0.05 else "not_significant"
+        else:
+            classification = "p_value_unavailable"
+
+        rows.append({
+            "lag": lag,
+            "n": n,
+            "q_stat": float(q_stat),
+            "p_value": p_value,
+            "classification": classification,
+        })
+
+    return pd.DataFrame(rows)
+
+
 def orders_with_all_time_high_nearness(
     orders_data: Any,
     market_data: Any,
@@ -1236,6 +1331,7 @@ def load_simulation_artifacts(sim_type: str, file_name: str, result_root: str | 
         "orders": base_dir / f"{file_name}_orders.csv",
         "executions": base_dir / f"{file_name}_executions.csv",
         "portfolios": base_dir / f"{file_name}_agent_portfolios.csv",
+        "decisions": base_dir / f"{file_name}_llm_decisions.csv",
     }
     if not paths["market"].exists():
         raise FileNotFoundError(f"Market result not found: {paths['market']}")
@@ -1248,6 +1344,7 @@ def load_simulation_artifacts(sim_type: str, file_name: str, result_root: str | 
         "orders": pd.read_csv(paths["orders"]) if paths["orders"].exists() else None,
         "executions": pd.read_csv(paths["executions"]) if paths["executions"].exists() else None,
         "portfolios": pd.read_csv(paths["portfolios"]) if paths["portfolios"].exists() else None,
+        "decisions": pd.read_csv(paths["decisions"]) if paths["decisions"].exists() else None,
     }
 
 
@@ -1330,6 +1427,7 @@ def analyze_simulation(
         print(f"Orders rows: {0 if artifacts['orders'] is None else len(artifacts['orders'])}")
         print(f"Executions rows: {0 if artifacts['executions'] is None else len(artifacts['executions'])}")
         print(f"Portfolio rows: {0 if artifacts['portfolios'] is None else len(artifacts['portfolios'])}")
+        print(f"LLM decision rows: {0 if artifacts.get('decisions') is None else len(artifacts['decisions'])}")
         if comparison_market_data is not None:
             print(f"Comparison market rows after warmup trim: {len(comparison_market_data)}")
 
@@ -1516,6 +1614,77 @@ def _llm_order_flow_metrics(artifacts: dict[str, Any], report: dict[str, Any]) -
                     metrics["odean_proxy_pgr_minus_plr"] = float(pgr - plr)
 
     return metrics
+
+
+def llm_decision_variability(
+    decisions_data: Any,
+    group_cols: tuple[str, ...] | list[str]=("personality_name",),
+    n_bootstrap: int=1000,
+    random_state: int=42,
+) -> pd.DataFrame:
+    """This function summarizes LLM trading-intention variability.
+
+    Params:
+        decisions_data: Saved LLM decision records.
+        group_cols: Columns used to group decision summaries.
+        n_bootstrap: Number of bootstrap resamples for imbalance intervals.
+        random_state: Random seed for bootstrap reproducibility.
+    """
+    df = _as_dataframe(decisions_data)
+    if df.empty or "llm_intent" not in df.columns:
+        return pd.DataFrame()
+
+    group_cols = [col for col in group_cols if col in df.columns]
+    if not group_cols:
+        df = df.copy()
+        df["_all"] = "all"
+        group_cols = ["_all"]
+
+    rng = np.random.default_rng(random_state)
+    rows = []
+    for keys, group in df.groupby(group_cols, dropna=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+
+        intents = group["llm_intent"].astype(str).str.upper().str.strip()
+        counts = intents.value_counts()
+        total = int(len(intents))
+        buy = int(counts.get("BUY", 0))
+        sell = int(counts.get("SELL", 0))
+        hold = int(counts.get("HOLD", 0))
+        imbalance = (buy - sell) / total if total else np.nan
+        entropy = 0.0
+        for count in [buy, sell, hold]:
+            probability = count / total if total else 0.0
+            if probability > 0:
+                entropy -= probability * np.log2(probability)
+
+        boot_values = []
+        if total > 1 and n_bootstrap > 0:
+            coded = intents.map({"BUY": 1, "SELL": -1, "HOLD": 0}).fillna(0).to_numpy(dtype=float)
+            for _ in range(int(n_bootstrap)):
+                sample = rng.choice(coded, size=total, replace=True)
+                boot_values.append(float(sample.mean()))
+        ci_low = float(np.quantile(boot_values, 0.025)) if boot_values else np.nan
+        ci_high = float(np.quantile(boot_values, 0.975)) if boot_values else np.nan
+
+        row = {col: value for col, value in zip(group_cols, keys)}
+        row.update({
+            "n_decisions": total,
+            "buy": buy,
+            "sell": sell,
+            "hold": hold,
+            "buy_rate": buy / total if total else np.nan,
+            "sell_rate": sell / total if total else np.nan,
+            "hold_rate": hold / total if total else np.nan,
+            "order_flow_imbalance": imbalance,
+            "intent_entropy_bits": float(entropy),
+            "imbalance_ci95_low": ci_low,
+            "imbalance_ci95_high": ci_high,
+        })
+        rows.append(row)
+
+    return pd.DataFrame(rows)
 def macro_table(sim_facts: dict[str, Any], sim_facts_with_volume: dict[str, Any], historic_max: dict[str, Any], paper_report: dict[str, Any]) -> pd.DataFrame:
     """This function formats macro-level validation metrics as a table.
 
@@ -1733,12 +1902,18 @@ def full_metric(paper_report: dict[str, Any],artifacts: dict[str, Any]) -> dict[
     micro_metrics = _llm_order_flow_metrics(artifacts, paper_report)
     micro_llm_validation = micro_table(micro_metrics)
     architecture_safeguard = architecture_table()
+    kurtosis_report = pd.DataFrame([kurtosis_diagnostic(artifacts["market"], price_col="market_price")])
+    ljung_box_report = ljung_box_abs_return_test(artifacts["market"], price_col="market_price")
+    decision_variability = llm_decision_variability(artifacts.get("decisions"))
 
 
 
     validation_dashboard = {
         "macro": macro_market_validation,
         "micro": micro_llm_validation,
+        "kurtosis_diagnostic": kurtosis_report,
+        "ljung_box_abs_returns": ljung_box_report,
+        "llm_decision_variability": decision_variability,
         "architecture": architecture_safeguard,
     }
     return validation_dashboard
